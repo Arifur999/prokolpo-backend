@@ -47,6 +47,7 @@ production image build.
 | `internal/project` | projects, their starting books, membership checks, delete and restore |
 | `internal/storage` | uploaded files on local disk under `UPLOAD_DIR` (default `data/uploads`) |
 | `internal/books` | a project's money: expenses, suppliers, contractors, attendance, payments, accounts |
+| `internal/partners` | a joint project's partners: shares, commitments, capital calls, deposits and their receipts |
 | `internal/members` | a project's team: invitations by phone, roles, removal, owner-issued reset codes |
 | `internal/activity`, `internal/timeline` | writing the activity log inside each change; reading it for the activity page |
 | `internal/token`, `internal/password`, `internal/phone` | access/opaque tokens, argon2id, BD mobile numbers |
@@ -160,6 +161,23 @@ Under `/projects/{id}`; members read, only the owner changes the team (others ge
 | `DELETE /invites/{iid}` | cancels an invitation |
 | `GET /activity?actor=&action=&days=&before=` | 50 entries a page, newest first, with the bill, payment or transfer joined in |
 | `GET /activity/week` | each member's entries since Sunday |
+
+## Partners
+
+Under `/projects/{id}` of a joint project (`NOT_PARTNERSHIP` otherwise); members read, the owner adds partners
+and capital calls, owners and managers take deposits.
+
+| Endpoint | Notes |
+| --- | --- |
+| `GET /partners` | partners (share, commitment, call parts, paid, team role) and capital calls with each part and what was paid |
+| `GET /partners/lookup?phone=` | `PARTNER`, `MEMBER` (with role), `ACCOUNT` or `NONE` |
+| `POST /partners` | `phone, name, share, committed, joinedOn, shares{partnerId: share}, viewer`; all shares must add up to 100 |
+| `GET /partners/{pid}` | the partner's ledger (owed and paid, oldest first) and their calls |
+| `POST /partners/{pid}/deposits` | `amount, accountId, callId?, date?, note?`; takes the next receipt number, money goes into the account |
+| `POST /capital-calls` | `total, reason`; split by today's shares, remainder to the biggest; due at the month's end |
+| `GET /partner-deposits/{did}/receipt`, `POST .../printed` | the receipt as printed, with owed and paid as of it |
+
+Receipt numbers (`PRK-000148`) run per project and are never reused.
 
 ## Database
 
