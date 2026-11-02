@@ -1,0 +1,56 @@
+package project
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/Arifur999/prokolpo-backend/internal/apperr"
+)
+
+// Membership is the caller's standing in one project, as the feature packages see it.
+type Membership struct {
+	ProjectID string
+	UserID    string
+	Role      string
+}
+
+// CanWrite reports whether the member may add or change entries. Viewers only read.
+func (m Membership) CanWrite() bool { return m.Role == RoleOwner || m.Role == RoleManager }
+
+// Member returns the caller's membership in a live project, or not found when they have
+// none (another tenant's project looks the same as a missing one).
+func (s *Service) Member(ctx context.Context, userID, projectID string) (Membership, error) {
+	if !isID(projectID) {
+		return Membership{}, notFound()
+	}
+	var role string
+	err := s.pool.QueryRow(ctx, `
+		SELECT m.role FROM project_members m JOIN projects p ON p.id = m.project_id
+		WHERE m.project_id = $1 AND m.user_id = $2 AND p.deleted_at IS NULL`, projectID, userID).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Membership{}, notFound()
+	}
+	if err != nil {
+		return Membership{}, fmt.Errorf("load membership: %w", err)
+	}
+	return Membership{ProjectID: projectID, UserID: userID, Role: role}, nil
+}
+
+// Writer is Member for changes: viewers get forbidden.
+func (s *Service) Writer(ctx context.Context, userID, projectID string) (Membership, error) {
+	m, err := s.Member(ctx, userID, projectID)
+	if err != nil {
+		return Membership{}, err
+	}
+	if !m.CanWrite() {
+		return Membership{}, messages.Fail(apperr.KindForbidden, codeReadOnly)
+	}
+	return m, nil
+}
+
+// Localize puts this package's coded errors (not found, read-only) into lang, for
+// feature handlers whose services call Member or Writer.
+func Localize(err error, lang string) error { return messages.Localize(err, lang) }

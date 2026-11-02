@@ -8,12 +8,14 @@ const (
 	codeNotFound      = "PROJECT_NOT_FOUND"
 	codeOwnerOnly     = "OWNER_ONLY"
 	codeRestoreClosed = "RESTORE_WINDOW_CLOSED"
+	codeReadOnly      = "READ_ONLY_ROLE"
 )
 
 var messages = msg.Catalog{
 	codeInvalidInput:  {BN: "কিছু তথ্য ঠিক নেই — লাল চিহ্ন দেওয়া ঘরগুলো দেখুন", EN: "Some details need fixing — check the highlighted fields"},
 	codeNotFound:      {BN: "প্রজেক্টটা পাওয়া যায়নি", EN: "Project not found"},
 	codeOwnerOnly:     {BN: "এটা শুধু প্রজেক্টের মালিক করতে পারেন", EN: "Only the project's owner can do this"},
+	codeReadOnly:      {BN: "আপনি এই প্রজেক্টে শুধু দেখতে পারেন — এন্ট্রি করতে মালিককে বলুন", EN: "You can only view this project — ask the owner for entry access"},
 	codeRestoreClosed: {BN: "30 দিন পার হয়ে গেছে — এই প্রজেক্ট আর ফেরানো যাবে না", EN: "More than 30 days have passed — this project can no longer be restored"},
 }
 
