@@ -36,7 +36,8 @@ type UserDetail struct {
 	Ticket          *Ticket       `json:"ticket"`
 }
 
-// UserProject is a project the account belongs to, with its owner and how busy it is.
+// UserProject is a project the account belongs to, with its owner, a few other members (for
+// checking who is calling) and how busy it is.
 type UserProject struct {
 	ID        string     `json:"id"`
 	Name      string     `json:"name"`
@@ -45,6 +46,7 @@ type UserProject struct {
 	Owner     string     `json:"owner"`
 	OwnerID   string     `json:"ownerId"`
 	Members   int        `json:"members"`
+	Others    []string   `json:"others"`
 	Role      string     `json:"role"`
 	LastWork  *time.Time `json:"lastWork"`
 }
@@ -118,7 +120,11 @@ func (s *Service) User(ctx context.Context, userID string) (UserDetail, error) {
 func (s *Service) userProjects(ctx context.Context, d *UserDetail) error {
 	rows, err := s.pool.Query(ctx, `
 		SELECT p.id, p.name, p.kind, p.ownership, o.first_name || ' ' || o.last_name, o.id,
-		       (SELECT count(*) FROM project_members x WHERE x.project_id = p.id), m.role,
+		       (SELECT count(*) FROM project_members x WHERE x.project_id = p.id),
+		       coalesce((SELECT array_agg(n ORDER BY n) FROM (
+		           SELECT o2.first_name || ' ' || o2.last_name AS n FROM project_members x JOIN users o2 ON o2.id = x.user_id
+		           WHERE x.project_id = p.id AND x.user_id <> m.user_id LIMIT 3) z), '{}'),
+		       m.role,
 		       (SELECT max(a.created_at) FROM activity_log a WHERE a.project_id = p.id)
 		FROM project_members m JOIN projects p ON p.id = m.project_id JOIN users o ON o.id = p.owner_id
 		WHERE m.user_id = $1 AND p.deleted_at IS NULL ORDER BY m.created_at`, d.ID)
