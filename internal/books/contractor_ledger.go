@@ -132,8 +132,8 @@ func (s *Service) AddExtra(ctx context.Context, userID, projectID, contractorID 
 		if err != nil {
 			return fmt.Errorf("insert extra: %w", err)
 		}
-		if err = markWorking(ctx, tx, contractorID); err != nil {
-			return err
+		if markErr := markWorking(ctx, tx, contractorID); markErr != nil {
+			return markErr
 		}
 		return logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: "CREATE", entity: "extra", entityID: id, summary: ne.Title})
 	})
