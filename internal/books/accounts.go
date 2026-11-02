@@ -96,17 +96,18 @@ func accountsOf(ctx context.Context, q db, projectID string) ([]Account, error) 
 	})
 }
 
-// Ledger lists every movement, newest first, each with its account's running balance.
+// Ledger lists every movement, newest first, each with its account's running balance. An
+// opening balance counts first and lists last, whatever its date.
 func (s *Service) Ledger(ctx context.Context, userID, projectID string) ([]Movement, error) {
 	if _, err := s.members.Member(ctx, userID, projectID); err != nil {
 		return nil, err
 	}
 	rows, err := s.pool.Query(ctx, movementsCTE+`
 		SELECT m.ref, m.kind, m.account_id, a.name, to_char(m.date, 'YYYY-MM-DD'), m.amount, m.party, m.title, m.note, m.other,
-		       sum(m.amount) OVER (PARTITION BY m.account_id ORDER BY m.date, m.created_at, m.ref ROWS UNBOUNDED PRECEDING),
+		       sum(m.amount) OVER (PARTITION BY m.account_id ORDER BY m.kind <> 'OPENING', m.date, m.created_at, m.ref ROWS UNBOUNDED PRECEDING),
 		       m.created_at
 		FROM movements m JOIN money_accounts a ON a.id = m.account_id
-		ORDER BY m.date DESC, m.created_at DESC, m.ref DESC`, projectID)
+		ORDER BY m.kind = 'OPENING', m.date DESC, m.created_at DESC, m.ref DESC`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list movements: %w", err)
 	}
