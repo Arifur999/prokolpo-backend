@@ -37,3 +37,25 @@ func RequireUser(issuer *token.Issuer, responder *httpx.Responder) func(http.Han
 		})
 	}
 }
+
+// MaybeUserFrom returns the claims OptionalUser found, if any.
+func MaybeUserFrom(ctx context.Context) (token.Claims, bool) {
+	claims, ok := ctx.Value(claimsKey{}).(token.Claims)
+	return claims, ok
+}
+
+// OptionalUser attaches the caller's claims when they send a valid Bearer
+// token and lets the request through either way, for routes that work for
+// visitors and signed-in users alike.
+func OptionalUser(issuer *token.Issuer) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok {
+				if claims, err := issuer.Parse(raw); err == nil {
+					r = r.WithContext(context.WithValue(r.Context(), claimsKey{}, claims))
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
