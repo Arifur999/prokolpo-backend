@@ -10,22 +10,26 @@ import (
 	"github.com/Arifur999/prokolpo-backend/internal/books"
 	"github.com/Arifur999/prokolpo-backend/internal/health"
 	"github.com/Arifur999/prokolpo-backend/internal/httpx"
+	"github.com/Arifur999/prokolpo-backend/internal/members"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 	"github.com/Arifur999/prokolpo-backend/internal/status"
 	"github.com/Arifur999/prokolpo-backend/internal/support"
+	"github.com/Arifur999/prokolpo-backend/internal/timeline"
 	"github.com/Arifur999/prokolpo-backend/internal/token"
 )
 
 // Deps are the handlers' dependencies, built once in app.Run.
 type Deps struct {
-	Log     *slog.Logger
-	DB      health.Pinger
-	Auth    *auth.Service
-	Support *support.Service
-	Project *project.Service
-	Books   *books.Service
-	Status  status.Source
-	Issuer  *token.Issuer
+	Log      *slog.Logger
+	DB       health.Pinger
+	Auth     *auth.Service
+	Support  *support.Service
+	Project  *project.Service
+	Books    *books.Service
+	Members  *members.Service
+	Activity *timeline.Service
+	Status   status.Source
+	Issuer   *token.Issuer
 }
 
 // New returns the API's root handler. Every route lives under /api/v1.
@@ -40,6 +44,8 @@ func New(deps Deps) http.Handler {
 	auth.NewHandler(deps.Auth, responder).Register(mux, requireUser)
 	project.NewHandler(deps.Project, responder).Register(mux, requireUser)
 	books.NewHandler(deps.Books, responder).Register(mux, requireUser)
+	members.NewHandler(deps.Members, responder).Register(mux, requireUser)
+	timeline.NewHandler(deps.Activity, responder).Register(mux, requireUser)
 	support.NewHandler(deps.Support, responder).Register(mux, auth.OptionalUser(deps.Issuer))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		responder.Error(w, r, apperr.NotFound("This endpoint does not exist."))

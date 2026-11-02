@@ -54,3 +54,15 @@ func (s *Service) Writer(ctx context.Context, userID, projectID string) (Members
 // Localize puts this package's coded errors (not found, read-only) into lang, for
 // feature handlers whose services call Member or Writer.
 func Localize(err error, lang string) error { return messages.Localize(err, lang) }
+
+// Owner is Member for managing the project itself: anyone but the owner gets forbidden.
+func (s *Service) Owner(ctx context.Context, userID, projectID string) (Membership, error) {
+	m, err := s.Member(ctx, userID, projectID)
+	if err != nil {
+		return Membership{}, err
+	}
+	if m.Role != RoleOwner {
+		return Membership{}, messages.Fail(apperr.KindForbidden, codeOwnerOnly)
+	}
+	return m, nil
+}
