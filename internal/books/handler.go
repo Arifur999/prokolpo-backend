@@ -27,6 +27,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 		mux.Handle(method+" /api/v1/projects/{id}"+path, requireUser(fn))
 	}
 	route("GET", "/overview", h.overview)
+	route("GET", "/reports/expenses", h.expenseReport)
 	route("GET", "/categories", h.categories)
 	route("POST", "/categories", h.createCategory)
 
@@ -245,6 +246,19 @@ func (h *Handler) attendance(w http.ResponseWriter, r *http.Request) {
 	}
 	start, teams, err := h.svc.AttendanceWeek(r.Context(), c.user, c.project, day)
 	h.reply(w, r, http.StatusOK, map[string]any{"weekStart": start, "today": h.svc.today().Format(time.DateOnly), "teams": teams}, err)
+}
+
+func (h *Handler) expenseReport(w http.ResponseWriter, r *http.Request) {
+	c := h.call(r)
+	day := func(key string) *time.Time {
+		d, err := time.Parse(time.DateOnly, r.URL.Query().Get(key))
+		if err != nil {
+			return nil
+		}
+		return &d
+	}
+	report, err := h.svc.ExpenseReport(r.Context(), c.user, c.project, day("from"), day("to"))
+	h.reply(w, r, http.StatusOK, report, err)
 }
 
 func (h *Handler) saveAttendance(w http.ResponseWriter, r *http.Request) {

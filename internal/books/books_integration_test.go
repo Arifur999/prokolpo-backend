@@ -262,3 +262,37 @@ func TestViewersCannotWrite(t *testing.T) {
 		t.Fatalf("viewer create err = %v, want forbidden", err)
 	}
 }
+
+func TestTheExpenseReportGroupsThePeriodFourWays(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	s := f.supplier(t, "করিম রড স্টোর", 0)
+	f.bill(t, 475_000, &s.ID, false)
+	f.bill(t, 25_000, nil, true)
+	if err := f.svc.Pay(ctx, f.owner, f.project, Party{Table: "suppliers", ID: s.ID}, NewPayment{AccountID: f.cash, Amount: 155_000, Date: time.Now()}); err != nil {
+		t.Fatalf("Pay: %v", err)
+	}
+
+	r, err := f.svc.ExpenseReport(ctx, f.owner, f.project, nil, nil)
+	if err != nil {
+		t.Fatalf("report: %v", err)
+	}
+	if len(r.Categories) != 2 || r.Categories[0].Name != "রড" || r.Categories[0].Amount != 500_000 || r.Categories[1].Amount != 0 {
+		t.Fatalf("heads = %+v, want রড 5,00,000 then the unused সিমেন্ট", r.Categories)
+	}
+	if len(r.Phases) != 1 || r.Phases[0].Amount != 500_000 || r.Unphased != 0 || *r.Budget != 1_000_000 {
+		t.Fatalf("phases = %+v unphased %d", r.Phases, r.Unphased)
+	}
+	if n := len(r.Months); n == 0 || r.Months[n-1].Amount != 500_000 {
+		t.Fatalf("months = %+v", r.Months)
+	}
+	if len(r.Suppliers) != 1 || r.Suppliers[0].Billed != 475_000 || r.Suppliers[0].Paid != 155_000 {
+		t.Fatalf("suppliers = %+v", r.Suppliers)
+	}
+
+	lastYear := time.Now().AddDate(-1, 0, 0)
+	old, err := f.svc.ExpenseReport(ctx, f.owner, f.project, &lastYear, &lastYear)
+	if err != nil || old.Categories[0].Amount != 0 || old.Suppliers[0].Billed != 0 {
+		t.Fatalf("a year ago = %+v, %v; want nothing spent", old, err)
+	}
+}
