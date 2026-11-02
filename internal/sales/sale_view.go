@@ -54,7 +54,7 @@ func (s *Service) Sale(ctx context.Context, userID, projectID, saleID string) (S
 	if len(list) == 0 {
 		return SaleDetail{}, notFound()
 	}
-	d := SaleDetail{Sale: list[0], Rows: list[0].rows}
+	d := SaleDetail{Sale: list[0], Rows: list[0].Rows}
 	if d.Rows == nil {
 		d.Rows = []Row{}
 	}

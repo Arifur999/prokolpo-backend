@@ -28,7 +28,7 @@ type Sale struct {
 	FirstDue       *time.Time `json:"firstDue"`
 	Installment    int64      `json:"installment"`
 	Standing       Standing   `json:"standing"`
-	rows           []Row
+	Rows           []Row      `json:"rows"`
 }
 
 func (sl *Sale) terms() Terms {
@@ -72,8 +72,8 @@ func loadSales(ctx context.Context, q db, projectID string, f saleFilter, today 
 	}
 	for i := range list {
 		sl := &list[i]
-		sl.rows = Schedule(sl.terms(), paid[sl.ID])
-		sl.Standing = Stand(sl.terms(), sl.rows, today)
+		sl.Rows = Schedule(sl.terms(), paid[sl.ID])
+		sl.Standing = Stand(sl.terms(), sl.Rows, today)
 	}
 	return list, nil
 }
