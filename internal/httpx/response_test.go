@@ -93,6 +93,16 @@ func TestResponderErrorKeepsFieldErrors(t *testing.T) {
 	}
 }
 
+func TestResponderErrorCarriesCode(t *testing.T) {
+	rec := httptest.NewRecorder()
+	err := apperr.WithCode(apperr.Forbidden("Your account is suspended."), "ACCOUNT_SUSPENDED")
+	NewResponder(slog.New(slog.DiscardHandler)).Error(rec, httptest.NewRequest(http.MethodPost, "/", http.NoBody), err)
+
+	if got := decodeBody(t, rec)["code"]; got != "ACCOUNT_SUSPENDED" {
+		t.Errorf("code = %v, want ACCOUNT_SUSPENDED", got)
+	}
+}
+
 func TestResponderErrorHidesUnexpectedErrors(t *testing.T) {
 	var logs bytes.Buffer
 	rec := httptest.NewRecorder()

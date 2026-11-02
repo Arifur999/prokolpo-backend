@@ -40,6 +40,7 @@ const internalErrorMessage = "Something went wrong on our side. Please try again
 type errorBody struct {
 	Success     bool                `json:"success"`
 	Message     string              `json:"message"`
+	Code        string              `json:"code,omitempty"`
 	ErrorSource []apperr.FieldError `json:"errorSource"`
 }
 
@@ -82,7 +83,7 @@ func (rs *Responder) Error(w http.ResponseWriter, r *http.Request, err error) {
 	if fields == nil {
 		fields = []apperr.FieldError{}
 	}
-	rs.write(w, r, statusOf(appErr.Kind), errorBody{Message: appErr.Message, ErrorSource: fields})
+	rs.write(w, r, statusOf(appErr.Kind), errorBody{Message: appErr.Message, Code: appErr.Code, ErrorSource: fields})
 }
 
 func statusOf(kind apperr.Kind) int {

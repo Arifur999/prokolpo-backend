@@ -27,11 +27,26 @@ type FieldError struct {
 }
 
 // Error is an expected failure whose Message is safe to show to the user.
+// Code, when set, is a stable machine-readable name ("ACCOUNT_SUSPENDED") for
+// failures the client must handle differently from a plain message.
 type Error struct {
 	Kind    Kind
+	Code    string
 	Message string
 	Fields  []FieldError
 	Err     error
+}
+
+// WithCode returns err with code attached, if err is an *Error; other errors
+// pass through unchanged.
+func WithCode(err error, code string) error {
+	e, ok := As(err)
+	if !ok {
+		return err
+	}
+	coded := *e
+	coded.Code = code
+	return &coded
 }
 
 func (e *Error) Error() string {
