@@ -11,17 +11,22 @@ import (
 	"time"
 
 	"github.com/Arifur999/prokolpo-backend/internal/httpx"
+	"github.com/Arifur999/prokolpo-backend/internal/status"
 	"github.com/Arifur999/prokolpo-backend/internal/token"
 )
 
 type fakeDB struct{ err error }
+
+type fakeStatus struct{ status.Status }
+
+func (f fakeStatus) Current(context.Context) (status.Status, error) { return f.Status, nil }
 
 func (f fakeDB) Ping(context.Context) error { return f.err }
 
 func serve(t *testing.T, db fakeDB, method, path string) (*httptest.ResponseRecorder, map[string]any) {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	New(Deps{Log: slog.New(slog.DiscardHandler), DB: db, Issuer: token.NewIssuer([]byte("server-test-secret-32-bytes-long!"), time.Minute)}).ServeHTTP(rec, httptest.NewRequest(method, path, http.NoBody))
+	New(Deps{Log: slog.New(slog.DiscardHandler), DB: db, Status: fakeStatus{}, Issuer: token.NewIssuer([]byte("server-test-secret-32-bytes-long!"), time.Minute)}).ServeHTTP(rec, httptest.NewRequest(method, path, http.NoBody))
 
 	var body map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {

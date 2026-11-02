@@ -9,6 +9,7 @@ import (
 	"github.com/Arifur999/prokolpo-backend/internal/auth"
 	"github.com/Arifur999/prokolpo-backend/internal/health"
 	"github.com/Arifur999/prokolpo-backend/internal/httpx"
+	"github.com/Arifur999/prokolpo-backend/internal/status"
 	"github.com/Arifur999/prokolpo-backend/internal/support"
 	"github.com/Arifur999/prokolpo-backend/internal/token"
 )
@@ -19,6 +20,7 @@ type Deps struct {
 	DB      health.Pinger
 	Auth    *auth.Service
 	Support *support.Service
+	Status  status.Source
 	Issuer  *token.Issuer
 }
 
@@ -29,6 +31,7 @@ func New(deps Deps) http.Handler {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/health", healthHandler.Check)
+	mux.HandleFunc("GET /api/v1/status", status.Handler(deps.Status, responder))
 	auth.NewHandler(deps.Auth, responder).Register(mux, auth.RequireUser(deps.Issuer, responder))
 	support.NewHandler(deps.Support, responder).Register(mux, auth.OptionalUser(deps.Issuer))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -36,5 +39,6 @@ func New(deps Deps) http.Handler {
 	})
 
 	// The request id goes on first, so the log line and any panic report carry it.
-	return httpx.WithRequestID(httpx.RecoverPanics(deps.Log, httpx.LogRequests(deps.Log, mux)))
+	routes := status.BlockDuringMaintenance(deps.Status, deps.Issuer, responder)(mux)
+	return httpx.WithRequestID(httpx.RecoverPanics(deps.Log, httpx.LogRequests(deps.Log, routes)))
 }
