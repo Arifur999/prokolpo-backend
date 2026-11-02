@@ -18,9 +18,15 @@ func UserFrom(ctx context.Context) token.Claims {
 	return claims
 }
 
-// RequireUser rejects requests without a valid Bearer access token and puts
-// its claims in the context for the handler.
-func RequireUser(issuer *token.Issuer, responder *httpx.Responder) func(http.Handler) http.Handler {
+// AccountGate says whether a signed token's account may still act: suspension and a password
+// change take effect at once instead of when the token expires.
+type AccountGate interface {
+	Active(ctx context.Context, claims token.Claims) error
+}
+
+// RequireUser rejects requests without a valid Bearer access token, or whose account the gate
+// refuses, and puts its claims in the context for the handler.
+func RequireUser(issuer *token.Issuer, gate AccountGate, responder *httpx.Responder) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -31,6 +37,10 @@ func RequireUser(issuer *token.Issuer, responder *httpx.Responder) func(http.Han
 			claims, err := issuer.Parse(raw)
 			if err != nil {
 				responder.Error(w, r, messages.Localize(messages.Fail(apperr.KindUnauthorized, codeUnauthorized), httpx.Lang(r)))
+				return
+			}
+			if err = gate.Active(r.Context(), claims); err != nil {
+				responder.Error(w, r, messages.Localize(err, httpx.Lang(r)))
 				return
 			}
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), claimsKey{}, claims)))

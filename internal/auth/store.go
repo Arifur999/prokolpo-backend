@@ -70,7 +70,11 @@ func touchLastLogin(ctx context.Context, q db, userID string) error {
 }
 
 func updatePassword(ctx context.Context, q db, userID, hash string) error {
-	_, err := q.Exec(ctx, `UPDATE users SET password_hash = $2, password_changed_at = now() WHERE id = $1`, userID, hash)
+	if _, err := q.Exec(ctx, `UPDATE users SET password_hash = $2, password_changed_at = now() WHERE id = $1`, userID, hash); err != nil {
+		return err
+	}
+	// A new password closes any staff panel session too.
+	_, err := q.Exec(ctx, `DELETE FROM staff_sessions WHERE user_id = $1`, userID)
 	return err
 }
 

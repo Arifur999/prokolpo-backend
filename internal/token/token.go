@@ -25,8 +25,9 @@ var ErrInvalid = errors.New("invalid access token")
 
 // Claims is what the API learns from a valid access token.
 type Claims struct {
-	UserID string
-	Role   string
+	UserID   string
+	Role     string
+	IssuedAt time.Time
 }
 
 type accessClaims struct {
@@ -75,7 +76,11 @@ func (is *Issuer) Parse(raw string) (Claims, error) {
 	if err != nil || claims.Subject == "" {
 		return Claims{}, ErrInvalid
 	}
-	return Claims{UserID: claims.Subject, Role: claims.Role}, nil
+	c := Claims{UserID: claims.Subject, Role: claims.Role}
+	if claims.IssuedAt != nil {
+		c.IssuedAt = claims.IssuedAt.Time
+	}
+	return c, nil
 }
 
 // NewOpaque returns a random URL-safe token and the hash to store. The raw

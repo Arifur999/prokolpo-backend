@@ -276,3 +276,30 @@ func TestResetOptionsForUnknownNumber(t *testing.T) {
 	_, err := svc.ResetOptions(context.Background(), "01888888888", "bn")
 	wantCode(t, err, codeAccountNotFound)
 }
+
+// A token stops working the moment its account is suspended or its password is reset.
+func TestAccessTokenFollowsTheAccount(t *testing.T) {
+	svc, pool, _ := newTestService(t)
+	ctx := context.Background()
+	session, err := svc.Register(ctx, karim(), ClientMeta{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims, err := svc.issuer.Parse(session.AccessToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Active(ctx, claims); err != nil {
+		t.Fatalf("fresh token refused: %v", err)
+	}
+
+	if _, err = pool.Exec(ctx, `UPDATE users SET password_changed_at = now() + interval '2 seconds' WHERE id = $1`, claims.UserID); err != nil {
+		t.Fatal(err)
+	}
+	wantCode(t, svc.Active(ctx, claims), codeUnauthorized)
+
+	if _, err = pool.Exec(ctx, `UPDATE users SET status = 'suspended', suspended_at = now() WHERE id = $1`, claims.UserID); err != nil {
+		t.Fatal(err)
+	}
+	wantCode(t, svc.Active(ctx, claims), codeAccountSuspended)
+}

@@ -52,7 +52,7 @@ func New(deps Deps) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/health", healthHandler.Check)
 	mux.HandleFunc("GET /api/v1/status", status.Handler(deps.Status, responder))
-	requireUser := auth.RequireUser(deps.Issuer, responder)
+	requireUser := auth.RequireUser(deps.Issuer, deps.Auth, responder)
 	auth.NewHandler(deps.Auth, responder).Register(mux, requireUser)
 	project.NewHandler(deps.Project, responder).Register(mux, requireUser)
 	books.NewHandler(deps.Books, responder).Register(mux, requireUser)
