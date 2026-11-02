@@ -113,15 +113,18 @@ func TestDepositsGetReceiptsAndFillTheAccount(t *testing.T) {
 		t.Fatalf("create call: %v", err)
 	}
 
-	first, err := f.svc.Deposit(ctx, f.owner, f.project, tania.ID, httpx.LangBangla, NewDeposit{Amount: 1_500_000, AccountID: f.bank, Date: time.Now()})
+	// The call is dated by the Bangladesh day; deposits use the same day, or late in the
+	// UTC evening the call would land a day after its deposit.
+	today := f.svc.today()
+	first, err := f.svc.Deposit(ctx, f.owner, f.project, tania.ID, httpx.LangBangla, NewDeposit{Amount: 1_500_000, AccountID: f.bank, Date: today})
 	if err != nil || first.ReceiptNo != "PRK-000001" {
 		t.Fatalf("first deposit = %+v, %v", first, err)
 	}
-	second, err := f.svc.Deposit(ctx, f.owner, f.project, tania.ID, httpx.LangBangla, NewDeposit{Amount: 400_000, CallID: &call.ID, AccountID: f.bank, Date: time.Now()})
+	second, err := f.svc.Deposit(ctx, f.owner, f.project, tania.ID, httpx.LangBangla, NewDeposit{Amount: 400_000, CallID: &call.ID, AccountID: f.bank, Date: today})
 	if err != nil || second.ReceiptNo != "PRK-000002" {
 		t.Fatalf("second deposit = %+v, %v", second, err)
 	}
-	_, err = f.svc.Deposit(ctx, f.owner, f.project, tania.ID, httpx.LangBangla, NewDeposit{Amount: 1, AccountID: "00000000-0000-0000-0000-000000000000", Date: time.Now()})
+	_, err = f.svc.Deposit(ctx, f.owner, f.project, tania.ID, httpx.LangBangla, NewDeposit{Amount: 1, AccountID: "00000000-0000-0000-0000-000000000000", Date: today})
 	wantCode(t, err, codeInvalidInput)
 
 	d, err := f.svc.Detail(ctx, f.owner, f.project, tania.ID)
