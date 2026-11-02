@@ -217,7 +217,26 @@ func TestContractPaymentsCountAsSpendingUpToTheContract(t *testing.T) {
 	}
 	if o.Figures.Cash != -130_000 || o.Figures.ContractorDue != 0 || len(o.Months) != 12 {
 		t.Fatalf("overview figures %+v, months %d", o.Figures, len(o.Months))
+	} // The months chart and the report agree with project_spent: the advance past the contract
+	// and the extra's payment are not counted twice.
+	r, err := f.svc.ExpenseReport(ctx, f.owner, f.project, nil, nil)
+	if err != nil {
+		t.Fatalf("report: %v", err)
 	}
+	if got, want := sumMonths(o.Months), int64(112_000); got != want {
+		t.Errorf("overview months add up to %d, want %d", got, want)
+	}
+	if got, want := sumMonths(r.Months), int64(112_000); got != want {
+		t.Errorf("report months add up to %d, want %d", got, want)
+	}
+}
+
+func sumMonths(months []MonthTotal) int64 {
+	var total int64
+	for _, m := range months {
+		total += m.Amount
+	}
+	return total
 }
 
 func TestTransfersMoveMoneyWithoutSpendingIt(t *testing.T) {
@@ -294,5 +313,18 @@ func TestTheExpenseReportGroupsThePeriodFourWays(t *testing.T) {
 	old, err := f.svc.ExpenseReport(ctx, f.owner, f.project, &lastYear, &lastYear)
 	if err != nil || old.Categories[0].Amount != 0 || old.Suppliers[0].Billed != 0 {
 		t.Fatalf("a year ago = %+v, %v; want nothing spent", old, err)
+	}
+}
+
+func TestBooksRefuseDatesAfterToday(t *testing.T) {
+	f := &fields{lang: "bn"}
+	today := time.Date(2026, 10, 3, 0, 0, 0, 0, time.UTC)
+	f.date("date", "2026-10-03", today)
+	if f.err() != nil {
+		t.Fatalf("today refused: %v", f.err())
+	}
+	f.date("date", "2026-10-04", today)
+	if f.err() == nil {
+		t.Fatal("tomorrow accepted")
 	}
 }

@@ -44,8 +44,7 @@ WITH labour AS (
 	UNION ALL
 	SELECT date, amount FROM contractor_extras WHERE project_id = $1
 	UNION ALL
-	SELECT p.date, p.amount FROM payments p JOIN contractors c ON c.id = p.contractor_id
-	WHERE p.project_id = $1 AND p.deleted_at IS NULL AND NOT p.paid_with_expense AND c.pay_type = 'CONTRACT'
+	` + contractPaidSQL + `
 ), period_labour AS (SELECT coalesce(sum(amount), 0)::bigint AS amount FROM labour WHERE date BETWEEN $2 AND $3)`
 
 // ExpenseReport reports spending between from and to; a nil from means since the

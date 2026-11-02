@@ -56,6 +56,18 @@ type Overview struct {
 	Recent     []RecentEntry   `json:"recent"`
 }
 
+// contractPaidSQL dates contract work by its payments ($1 is the project), counting each
+// payment only up to what is left of the contract, as project_labour() does: extra work is
+// counted on its own and an advance past the contract is not spending yet.
+const contractPaidSQL = `SELECT date, CASE WHEN contract_amount IS NULL THEN amount
+		ELSE least(amount, greatest(contract_amount - (paid - amount), 0)) END
+	FROM (
+		SELECT p.date, p.amount, c.contract_amount,
+			sum(p.amount) OVER (PARTITION BY p.contractor_id ORDER BY p.date, p.id) AS paid
+		FROM payments p JOIN contractors c ON c.id = p.contractor_id
+		WHERE p.project_id = $1 AND p.deleted_at IS NULL AND NOT p.paid_with_expense AND c.pay_type = 'CONTRACT'
+	) contract_paid`
+
 // spendingCTE is every taka spent, dated ($1 is the project): bills, team-day wages, extra
 // work and payments to contract workers.
 const spendingCTE = `
@@ -66,8 +78,7 @@ WITH spending AS (
 	UNION ALL
 	SELECT date, amount FROM contractor_extras WHERE project_id = $1
 	UNION ALL
-	SELECT p.date, p.amount FROM payments p JOIN contractors c ON c.id = p.contractor_id
-	WHERE p.project_id = $1 AND p.deleted_at IS NULL AND NOT p.paid_with_expense AND c.pay_type = 'CONTRACT'
+	` + contractPaidSQL + `
 )`
 
 // Overview gathers the overview page's figures, the last 12 months, the heads and the
