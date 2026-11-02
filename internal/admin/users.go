@@ -82,7 +82,7 @@ func (s *Service) Users(ctx context.Context, f UserFilter) (UserPage, error) {
 	p.Pages = max(1, (p.Total+UsersPerPage-1)/UsersPerPage)
 	rows, err := s.pool.Query(ctx, `
 		SELECT u.id, u.first_name || ' ' || u.last_name, nullif(u.company_name, ''), u.phone, u.email::text, u.locale, u.status, u.staff_role,
-		       u.created_at, u.last_login_at,
+		       u.created_at, coalesce(u.last_login_at, u.created_at),
 		       (SELECT count(*) FROM projects p WHERE p.owner_id = u.id AND p.deleted_at IS NULL),
 		       (SELECT count(*) FROM project_members m JOIN projects p ON p.id = m.project_id
 		        WHERE m.user_id = u.id AND p.owner_id <> u.id AND p.deleted_at IS NULL),
