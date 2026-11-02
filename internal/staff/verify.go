@@ -127,6 +127,10 @@ func (s *Service) Confirm(ctx context.Context, userID, code string, meta Meta) e
 		if err != nil {
 			return err
 		}
+		if !m.Enabled {
+			refusal = messages.Fail(apperr.KindForbidden, codeNoSetup)
+			return nil
+		}
 		if m.LockedUntil != nil && m.LockedUntil.After(s.now()) {
 			refusal = messages.Fail(apperr.KindTooManyRequests, codeLocked)
 			return nil
