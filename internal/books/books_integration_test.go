@@ -98,6 +98,10 @@ func TestBillsOnCreditRaiseTheDueAndPaymentsLowerIt(t *testing.T) {
 	s := f.supplier(t, "করিম রড স্টোর", 20_000)
 
 	onCredit := f.bill(t, 475_000, &s.ID, false)
+	d, err := f.svc.SupplierLedger(context.Background(), f.owner, f.project, s.ID)
+	if err != nil || d.Lines[0].Kind != "OPENING" {
+		t.Fatalf("first ledger line = %+v, %v; want the opening due first", d.Lines, err)
+	}
 	f.bill(t, 10_000, &s.ID, true)
 	if got := f.supplierDue(t, s.ID); got != 495_000 {
 		t.Fatalf("due = %d, want opening + credit bill 495000", got)

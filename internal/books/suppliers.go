@@ -204,8 +204,8 @@ func (s *Service) SupplierLedger(ctx context.Context, userID, projectID, supplie
 			FROM payments p JOIN money_accounts a ON a.id = p.account_id WHERE p.supplier_id = $1 AND p.deleted_at IS NULL
 		)
 		SELECT ref, kind, to_char(date, 'YYYY-MM-DD'), title, detail, charge, payment,
-		       sum(charge - payment) OVER (ORDER BY date, created_at, ref ROWS UNBOUNDED PRECEDING), account, purpose
-		FROM lines ORDER BY date, created_at, ref`, supplierID)
+		       sum(charge - payment) OVER (ORDER BY kind <> 'OPENING', date, created_at, ref ROWS UNBOUNDED PRECEDING), account, purpose
+		FROM lines ORDER BY kind <> 'OPENING', date, created_at, ref`, supplierID)
 	if err != nil {
 		return SupplierDetail{}, fmt.Errorf("supplier ledger: %w", err)
 	}
