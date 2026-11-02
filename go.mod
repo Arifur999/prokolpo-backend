@@ -3,6 +3,7 @@ module github.com/Arifur999/prokolpo-backend
 go 1.27
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-cmp v0.7.0
 	github.com/jackc/pgx/v5 v5.12.0
 	github.com/joho/godotenv v1.5.1
