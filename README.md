@@ -43,6 +43,10 @@ production image build.
 | `internal/apperr` | errors services return; the HTTP layer maps them to statuses |
 | `internal/database` | PostgreSQL pool |
 | `internal/health` | `GET /api/v1/health` |
+| `internal/auth` | registration, login, rotating sessions, password reset |
+| `internal/token`, `internal/password`, `internal/phone` | access/opaque tokens, argon2id, BD mobile numbers |
+| `internal/ratelimit`, `internal/mail` | in-memory limits (single instance), SMTP and log mailers |
+| `internal/testdb` | migrated, emptied database for integration tests (name must end in `_test`) |
 | `migrations` | goose SQL migrations, embedded in the binary |
 
 Feature packages (auth, projects, expenses, ...) are added next to these as each feature is built.
@@ -70,7 +74,27 @@ Every response uses one envelope.
 | 429 | rate limited |
 | 500 | unexpected; logged with the request id, details never sent |
 
-Every response carries `X-Request-ID`; send one to correlate frontend and API logs.
+Every response carries `X-Request-ID`; send one to correlate frontend and API logs. Errors the client must branch on
+carry a stable `code` (`ACCOUNT_SUSPENDED`, `RESET_LINK_INVALID`, ...). Messages follow `Accept-Language` (`bn` default,
+`en`).
+
+## Auth
+
+| Endpoint | Body | Notes |
+| --- | --- | --- |
+| `GET /auth/registration` | | `{ mode: open \| invite_only \| closed }` |
+| `POST /auth/register` | `firstName, lastName, companyName?, email?, phone, password, acceptTerms` | 201 with a session |
+| `POST /auth/login` | `identifier` (phone or email), `password`, `remember` | 5 wrong passwords lock 15 minutes |
+| `POST /auth/refresh` | `refreshToken` | rotates; a reused token revokes its family |
+| `POST /auth/logout` | `refreshToken` | |
+| `GET /auth/me` | | `Authorization: Bearer <accessToken>` |
+| `POST /auth/password/options` | `phone` | name, masked email, which ways can reset |
+| `POST /auth/password/email` | `phone` | emails a 30-minute single-use link, once a minute |
+| `POST /auth/password/check` | `token` | is the link still usable |
+| `POST /auth/password/reset` | `token, password` | signs out every session |
+
+A session is `{ user, accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt }`. Access tokens are
+15-minute HS256 JWTs (`sub`, `role`: `user` or `staff`); refresh tokens are opaque and stored hashed.
 
 ## Database
 
