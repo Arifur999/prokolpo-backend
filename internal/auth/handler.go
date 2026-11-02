@@ -33,6 +33,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	mux.HandleFunc("POST /api/v1/auth/password/reset", h.resetPassword)
 	mux.HandleFunc("POST /api/v1/auth/password/code", h.resetWithCode)
 	mux.HandleFunc("POST /api/v1/auth/invite", h.checkInvite)
+	h.registerAccount(mux, requireUser)
 }
 
 func (h *Handler) fail(w http.ResponseWriter, r *http.Request, err error) {

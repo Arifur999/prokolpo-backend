@@ -24,6 +24,9 @@ const (
 	codeResetCodeLocked    = "RESET_CODE_LOCKED"
 	codeResetCodeWrong     = "RESET_CODE_WRONG"
 	codeNoInvite           = "NO_INVITE"
+	codeOwnsProjects       = "OWNS_PROJECTS"
+	codeStaffKeep          = "STAFF_ACCOUNT"
+	codeDeviceGone         = "DEVICE_NOT_FOUND"
 )
 
 var messages = msg.Catalog{
@@ -46,23 +49,29 @@ var messages = msg.Catalog{
 	codeResetCodeExpired:   {BN: "কোডের মেয়াদ শেষ — মালিকের কাছ থেকে নতুন কোড নিন", EN: "This code has expired — ask the owner for a new one"},
 	codeResetCodeLocked:    {BN: "অনেকবার ভুল হয়েছে — মালিকের কাছ থেকে নতুন কোড নিন", EN: "Too many wrong tries — ask the owner for a new code"},
 	codeResetCodeWrong:     {BN: "কোড মেলেনি", EN: "The code didn't match"},
+	codeOwnsProjects:       {BN: "আপনি এখনো প্রজেক্টের মালিক — আগে সেগুলো অন্যকে দিন বা মুছুন", EN: "You still own projects — hand them over or delete them first"},
+	codeStaffKeep:          {BN: "স্টাফের অ্যাকাউন্ট এখান থেকে মোছা যায় না", EN: "Staff accounts can't be deleted here"},
+	codeDeviceGone:         {BN: "এই ডিভাইস আগেই লগআউট হয়েছে", EN: "This device is already logged out"},
 	codeNoInvite:           {BN: "এই নম্বরে কোনো আমন্ত্রণ নেই — প্রজেক্টের মালিককে বলুন আপনাকে মেম্বার হিসেবে যোগ করতে, তারপর আবার চেষ্টা করুন", EN: "This number has no invitation — ask the project's owner to add you as a member, then try again"},
 }
 
 // Field messages for registration and reset validation.
 var fieldMessages = map[string]msg.Text{
-	"codeShort":    {BN: "পুরো ৬ অঙ্কের কোড দিন", EN: "Enter all 6 digits of the code"},
-	"codeWrong":    {BN: "কোড মেলেনি — আর %d বার চেষ্টা করা যাবে", EN: "The code didn't match — %d tries left"},
-	"companyShort": {BN: "কোম্পানির নাম কমপক্ষে ২ অক্ষরের হতে হবে", EN: "Company name must be at least 2 characters"},
-	"companyLong":  {BN: "কোম্পানির নাম ৮০ অক্ষরের বেশি হতে পারবে না", EN: "Company name can't be longer than 80 characters"},
-	"firstLong":    {BN: "প্রথম নাম ৩০ অক্ষরের বেশি হতে পারবে না", EN: "First name can't be longer than 30 characters"},
-	"lastLong":     {BN: "শেষ নাম ৩০ অক্ষরের বেশি হতে পারবে না", EN: "Last name can't be longer than 30 characters"},
-	"firstMissing": {BN: "প্রথম নাম দিন", EN: "Enter your first name"},
-	"firstShort":   {BN: "প্রথম নাম কমপক্ষে ২ অক্ষরের হতে হবে", EN: "First name must be at least 2 characters"},
-	"lastMissing":  {BN: "শেষ নাম দিন", EN: "Enter your last name"},
-	"emailBad":     {BN: "সঠিক ইমেইল দিন", EN: "Enter a valid email"},
-	"phoneBad":     {BN: "সঠিক মোবাইল নম্বর দিন (যেমন 01712345678)", EN: "Enter a valid mobile number (e.g. 01712345678)"},
-	"passwordWeak": {BN: "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের এবং অক্ষর ও সংখ্যা মিলিয়ে হতে হবে", EN: "Password must be at least 8 characters with letters and numbers"},
-	"termsMissing": {BN: "শর্তাবলীতে সম্মতি দিন", EN: "Please accept the terms"},
-	"required":     {BN: "এই ঘরটা পূরণ করুন", EN: "This field is required"},
+	"codeShort":     {BN: "পুরো ৬ অঙ্কের কোড দিন", EN: "Enter all 6 digits of the code"},
+	"codeWrong":     {BN: "কোড মেলেনি — আর %d বার চেষ্টা করা যাবে", EN: "The code didn't match — %d tries left"},
+	"companyShort":  {BN: "কোম্পানির নাম কমপক্ষে ২ অক্ষরের হতে হবে", EN: "Company name must be at least 2 characters"},
+	"companyLong":   {BN: "কোম্পানির নাম ৮০ অক্ষরের বেশি হতে পারবে না", EN: "Company name can't be longer than 80 characters"},
+	"firstLong":     {BN: "প্রথম নাম ৩০ অক্ষরের বেশি হতে পারবে না", EN: "First name can't be longer than 30 characters"},
+	"lastLong":      {BN: "শেষ নাম ৩০ অক্ষরের বেশি হতে পারবে না", EN: "Last name can't be longer than 30 characters"},
+	"firstMissing":  {BN: "প্রথম নাম দিন", EN: "Enter your first name"},
+	"firstShort":    {BN: "প্রথম নাম কমপক্ষে ২ অক্ষরের হতে হবে", EN: "First name must be at least 2 characters"},
+	"lastMissing":   {BN: "শেষ নাম দিন", EN: "Enter your last name"},
+	"emailBad":      {BN: "সঠিক ইমেইল দিন", EN: "Enter a valid email"},
+	"phoneBad":      {BN: "সঠিক মোবাইল নম্বর দিন (যেমন 01712345678)", EN: "Enter a valid mobile number (e.g. 01712345678)"},
+	"passwordWeak":  {BN: "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের এবং অক্ষর ও সংখ্যা মিলিয়ে হতে হবে", EN: "Password must be at least 8 characters with letters and numbers"},
+	"termsMissing":  {BN: "শর্তাবলীতে সম্মতি দিন", EN: "Please accept the terms"},
+	"passwordWrong": {BN: "পাসওয়ার্ড মেলেনি", EN: "The password is incorrect"},
+	"passwordSame":  {BN: "নতুন পাসওয়ার্ড পুরোনোটার মতো হতে পারবে না", EN: "The new password can't be the same as the old one"},
+	"phoneSame":     {BN: "এটাই আপনার এখনকার নম্বর", EN: "This is already your number"},
+	"required":      {BN: "এই ঘরটা পূরণ করুন", EN: "This field is required"},
 }
