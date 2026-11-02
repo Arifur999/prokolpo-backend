@@ -1,0 +1,21 @@
+# Local development: `docker compose up -d db` for the database alone, or
+# `docker compose --profile app up --build` to run the API in a container too.
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: prokolpo
+      POSTGRES_PASSWORD: prokolpo
+      POSTGRES_DB: prokolpo
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prokolpo -d prokolpo"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
