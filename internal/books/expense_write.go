@@ -174,6 +174,12 @@ func (s *Service) Expense(ctx context.Context, userID, projectID, expenseID stri
 func (s *Service) UpdateExpense(ctx context.Context, userID, projectID, expenseID string, in ExpenseInput) (Expense, error) {
 	var after Expense
 	err := s.write(ctx, userID, projectID, func(tx pgx.Tx, _ project.Membership) error {
+		// Locked first, so a delete in between can't leave the bill and its payment apart.
+		if isID(expenseID) {
+			if _, err := tx.Exec(ctx, `SELECT 1 FROM expenses WHERE id = $1 AND project_id = $2 FOR UPDATE`, expenseID, projectID); err != nil {
+				return fmt.Errorf("lock expense: %w", err)
+			}
+		}
 		before, err := expenseByID(ctx, tx, projectID, expenseID, false)
 		if err != nil {
 			return err
@@ -186,7 +192,7 @@ func (s *Service) UpdateExpense(ctx context.Context, userID, projectID, expenseI
 		_, err = tx.Exec(ctx, `
 			UPDATE expenses SET category_id = $3, phase_id = $4, supplier_id = $5, contractor_id = $6, date = $7, quantity = $8::numeric,
 			       unit = $9, rate = $10, amount = $11, description = $12
-			WHERE id = $1 AND project_id = $2`,
+			WHERE id = $1 AND project_id = $2 AND deleted_at IS NULL`,
 			expenseID, projectID, in.CategoryID, in.PhaseID, in.SupplierID, in.ContractorID, in.Date, in.Quantity, in.Unit, in.Rate, in.Amount, in.Description)
 		if err != nil {
 			return fmt.Errorf("update expense: %w", err)

@@ -120,7 +120,7 @@ func (f ExpenseFilter) where() (string, []any) {
 		conds = append(conds, "pn.id IS NOT NULL")
 	}
 	if q := strings.TrimSpace(f.Query); q != "" {
-		p := arg("%" + q + "%")
+		p := arg("%" + likeEscaper.Replace(truncateRunes(q, 100)) + "%")
 		conds = append(conds, "(e.description ILIKE "+p+" OR c.name ILIKE "+p+" OR s.name ILIKE "+p+" OR k.name ILIKE "+p+")")
 	}
 	if len(conds) == 0 {
@@ -176,4 +176,14 @@ func (s *Service) Expenses(ctx context.Context, userID, projectID string, f Expe
 	}
 	items, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Expense, error) { return scanExpense(row) })
 	return ExpensePage{Items: items, Summary: sum}, err
+}
+
+// likeEscaper makes % and _ in a search mean themselves (ILIKE's default escape is \).
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+func truncateRunes(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n])
+	}
+	return s
 }
