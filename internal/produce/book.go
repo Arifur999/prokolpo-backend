@@ -62,6 +62,7 @@ type Buyer struct {
 type Book struct {
 	FarmType  string  `json:"farmType"`
 	Batches   []Batch `json:"batches"`
+	SetupName string  `json:"setupName"`
 	SetupCost int64   `json:"setupCost"`
 	Sales     []Sale  `json:"sales"`
 	Dues      []Due   `json:"dues"`
@@ -80,9 +81,10 @@ func loadBook(ctx context.Context, q db, projectID string) (Book, error) {
 	var b Book
 	err := q.QueryRow(ctx, `
 		SELECT coalesce(p.farm_type, ''),
+		       coalesce((SELECT name FROM project_phases WHERE project_id = p.id AND setup ORDER BY position LIMIT 1), ''),
 		       coalesce((SELECT sum(e.amount) FROM expenses e LEFT JOIN project_phases ph ON ph.id = e.phase_id
 		                 WHERE e.project_id = p.id AND e.deleted_at IS NULL AND (ph.id IS NULL OR ph.setup)), 0)
-		FROM projects p WHERE p.id = $1`, projectID).Scan(&b.FarmType, &b.SetupCost)
+		FROM projects p WHERE p.id = $1`, projectID).Scan(&b.FarmType, &b.SetupName, &b.SetupCost)
 	if err != nil {
 		return Book{}, fmt.Errorf("load farm: %w", err)
 	}

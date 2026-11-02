@@ -106,7 +106,7 @@ func TestABatchEarnsAgainstWhatItCost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("book: %v", err)
 	}
-	if book.SetupCost != 650_000 || len(book.Batches) != 2 {
+	if book.SetupCost != 650_000 || book.SetupName != "শেড তৈরি" || len(book.Batches) != 2 {
 		t.Fatalf("setup %d with batches %+v; want the shed apart from two batches", book.SetupCost, book.Batches)
 	}
 	b := book.Batches[0]
