@@ -80,11 +80,11 @@ func ValidAction(a string) bool { return slices.Contains(actions, a) }
 const feedSelect = `
 	SELECT a.id, a.action, a.entity, a.entity_id, a.summary, a.changes, a.reason, a.details,
 	       a.actor_id, u.first_name || ' ' || u.last_name, a.created_at,
-	       coalesce(ec.name, x.title),
+	       coalesce(ec.name, x.title, spu.name, slu.name),
 	       CASE WHEN e.quantity IS NULL THEN NULL ELSE trim_scale(e.quantity)::text END, e.unit,
-	       coalesce(e.amount, p.amount, t.amount, x.amount, pd.amount, cc.total),
-	       coalesce(es.name, ecn.name, ps.name, pc.name, xc.name, ac.name, pdp.name),
-	       coalesce(pa.name, ta.name, pda.name), tb.name,
+	       coalesce(e.amount, p.amount, t.amount, x.amount, pd.amount, cc.total, sp.amount, sl.price),
+	       coalesce(es.name, ecn.name, ps.name, pc.name, xc.name, ac.name, pdp.name, spc.name, slc.name),
+	       coalesce(pa.name, ta.name, pda.name, spa.name), tb.name,
 	       p.purpose, coalesce(p.note, t.note, e.description, pd.note), ph.name,
 	       EXISTS (SELECT 1 FROM payments pw WHERE pw.expense_id = e.id AND pw.paid_with_expense AND pw.deleted_at IS NULL),
 	       a.entity = 'expense' AND a.action = 'DELETE' AND e.deleted_at IS NOT NULL
@@ -109,6 +109,14 @@ const feedSelect = `
 	LEFT JOIN partners pdp ON pdp.id = pd.partner_id
 	LEFT JOIN money_accounts pda ON pda.id = pd.account_id
 	LEFT JOIN capital_calls cc ON a.entity = 'call' AND cc.id = a.entity_id
+	LEFT JOIN sale_payments sp ON a.entity = 'installment' AND sp.id = a.entity_id
+	LEFT JOIN sales spl ON spl.id = sp.sale_id
+	LEFT JOIN customers spc ON spc.id = spl.customer_id
+	LEFT JOIN units spu ON spu.id = spl.unit_id
+	LEFT JOIN money_accounts spa ON spa.id = sp.account_id
+	LEFT JOIN sales sl ON a.entity = 'sale' AND sl.id = a.entity_id
+	LEFT JOIN customers slc ON slc.id = sl.customer_id
+	LEFT JOIN units slu ON slu.id = sl.unit_id
 	WHERE a.project_id = $1
 	  AND ($2::uuid IS NULL OR a.actor_id = $2)
 	  AND ($3::text IS NULL OR a.action = $3 OR ($3 = 'CREATE' AND a.action = 'RESTORE'))
