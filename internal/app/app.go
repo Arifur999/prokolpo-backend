@@ -19,6 +19,7 @@ import (
 	"github.com/Arifur999/prokolpo-backend/internal/members"
 	"github.com/Arifur999/prokolpo-backend/internal/partners"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
+	"github.com/Arifur999/prokolpo-backend/internal/sales"
 	"github.com/Arifur999/prokolpo-backend/internal/server"
 	"github.com/Arifur999/prokolpo-backend/internal/status"
 	"github.com/Arifur999/prokolpo-backend/internal/storage"
@@ -54,7 +55,7 @@ func Run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	authService := auth.NewService(pool, issuer, newMailer(cfg, log), cfg.AppURL, log)
 
 	srv := &http.Server{
-		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Support: support.NewService(pool), Project: projects, Books: books.NewService(pool, projects, uploads), Members: members.NewService(pool, projects), Partners: partners.NewService(pool, projects), Activity: timeline.NewService(pool, projects), Status: status.NewService(pool), Issuer: issuer}),
+		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Support: support.NewService(pool), Project: projects, Books: books.NewService(pool, projects, uploads), Members: members.NewService(pool, projects), Partners: partners.NewService(pool, projects), Sales: sales.NewService(pool, projects), Activity: timeline.NewService(pool, projects), Status: status.NewService(pool), Issuer: issuer}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

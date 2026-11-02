@@ -13,6 +13,7 @@ import (
 	"github.com/Arifur999/prokolpo-backend/internal/members"
 	"github.com/Arifur999/prokolpo-backend/internal/partners"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
+	"github.com/Arifur999/prokolpo-backend/internal/sales"
 	"github.com/Arifur999/prokolpo-backend/internal/status"
 	"github.com/Arifur999/prokolpo-backend/internal/support"
 	"github.com/Arifur999/prokolpo-backend/internal/timeline"
@@ -29,6 +30,7 @@ type Deps struct {
 	Books    *books.Service
 	Members  *members.Service
 	Partners *partners.Service
+	Sales    *sales.Service
 	Activity *timeline.Service
 	Status   status.Source
 	Issuer   *token.Issuer
@@ -48,6 +50,7 @@ func New(deps Deps) http.Handler {
 	books.NewHandler(deps.Books, responder).Register(mux, requireUser)
 	members.NewHandler(deps.Members, responder).Register(mux, requireUser)
 	partners.NewHandler(deps.Partners, responder).Register(mux, requireUser)
+	sales.NewHandler(deps.Sales, responder).Register(mux, requireUser)
 	timeline.NewHandler(deps.Activity, responder).Register(mux, requireUser)
 	support.NewHandler(deps.Support, responder).Register(mux, auth.OptionalUser(deps.Issuer))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
