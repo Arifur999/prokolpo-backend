@@ -20,20 +20,22 @@ type Customer struct {
 	Phone     string    `json:"phone"`
 	NID       *string   `json:"nid"`
 	Address   *string   `json:"address"`
+	AltPhone  *string   `json:"altPhone"`
+	Note      *string   `json:"note"`
 	CreatedAt time.Time `json:"createdAt"`
 	Sales     []Sale    `json:"sales"`
 }
 
 func customersOf(ctx context.Context, q db, projectID, customerID string) ([]Customer, error) {
 	rows, err := q.Query(ctx, `
-		SELECT id, name, phone, nid, address, created_at FROM customers
+		SELECT id, name, phone, nid, address, alt_phone, note, created_at FROM customers
 		WHERE project_id = $1 AND ($2 = '' OR id::text = $2) ORDER BY created_at DESC`, projectID, customerID)
 	if err != nil {
 		return nil, fmt.Errorf("list customers: %w", err)
 	}
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Customer, error) {
 		c := Customer{Sales: []Sale{}}
-		scanErr := row.Scan(&c.ID, &c.Name, &c.Phone, &c.NID, &c.Address, &c.CreatedAt)
+		scanErr := row.Scan(&c.ID, &c.Name, &c.Phone, &c.NID, &c.Address, &c.AltPhone, &c.Note, &c.CreatedAt)
 		return c, scanErr
 	})
 }
@@ -87,17 +89,21 @@ func (s *Service) customersWithSales(ctx context.Context, projectID, customerID 
 
 // CustomerInput is a validated buyer.
 type CustomerInput struct {
-	Name    string
-	Phone   string
-	NID     *string
-	Address *string
+	Name     string
+	Phone    string
+	NID      *string
+	Address  *string
+	AltPhone *string
+	Note     *string
 }
 
 type customerBody struct {
-	Name    string `json:"name"`
-	Phone   string `json:"phone"`
-	NID     string `json:"nid"`
-	Address string `json:"address"`
+	Name     string `json:"name"`
+	Phone    string `json:"phone"`
+	NID      string `json:"nid"`
+	Address  string `json:"address"`
+	AltPhone string `json:"altPhone"`
+	Note     string `json:"note"`
 }
 
 func (b customerBody) validate(f *fields, prefix string) CustomerInput {
@@ -112,6 +118,14 @@ func (b customerBody) validate(f *fields, prefix string) CustomerInput {
 	c.Phone = p
 	c.NID = optional(f, prefix+"nid", b.NID, 30)
 	c.Address = optional(f, prefix+"address", b.Address, 200)
+	c.Note = optional(f, prefix+"note", b.Note, 300)
+	if alt := strings.TrimSpace(b.AltPhone); alt != "" {
+		p, err := phone.Normalize(alt)
+		if err != nil {
+			f.add(prefix+"altPhone", "phone")
+		}
+		c.AltPhone = &p
+	}
 	return c
 }
 
@@ -145,8 +159,8 @@ func (s *Service) AddCustomer(ctx context.Context, userID, projectID string, in 
 func upsertCustomer(ctx context.Context, tx pgx.Tx, userID, projectID string, in CustomerInput) (string, error) {
 	var id string
 	err := tx.QueryRow(ctx, `
-		INSERT INTO customers (project_id, name, phone, nid, address, created_by) VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (project_id, phone) DO NOTHING RETURNING id`, projectID, in.Name, in.Phone, in.NID, in.Address, userID).Scan(&id)
+		INSERT INTO customers (project_id, name, phone, nid, address, alt_phone, note, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (project_id, phone) DO NOTHING RETURNING id`, projectID, in.Name, in.Phone, in.NID, in.Address, in.AltPhone, in.Note, userID).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = tx.QueryRow(ctx, `SELECT id FROM customers WHERE project_id = $1 AND phone = $2`, projectID, in.Phone).Scan(&id)
 		return id, err
