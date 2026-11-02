@@ -97,9 +97,10 @@ func (s *Service) Overview(ctx context.Context, _ string) (Overview, error) {
 		return Overview{}, err
 	}
 	err = s.pool.QueryRow(ctx, `
-		SELECT (SELECT count(*) FROM expenses WHERE created_at > $1) + (SELECT count(*) FROM payments WHERE created_at > $1)
+		SELECT (SELECT count(*) FROM expenses WHERE created_at > $1) + (SELECT count(*) FROM payments WHERE created_at > $1 AND NOT paid_with_expense)
 		     + (SELECT count(*) FROM attendance WHERE updated_at > $1) + (SELECT count(*) FROM partner_deposits WHERE created_at > $1)
-		     + (SELECT count(*) FROM sale_payments WHERE created_at > $1)`, now.AddDate(0, 0, -30)).Scan(&o.Entries30)
+		     + (SELECT count(*) FROM sale_payments WHERE created_at > $1) + (SELECT count(*) FROM produce_sales WHERE created_at > $1)
+		     + (SELECT count(*) FROM shop_days WHERE created_at > $1)`, now.AddDate(0, 0, -30)).Scan(&o.Entries30)
 	if err != nil {
 		return Overview{}, fmt.Errorf("count entries: %w", err)
 	}

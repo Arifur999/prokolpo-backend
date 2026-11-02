@@ -12,6 +12,9 @@ import (
 // UsersPerPage is how many accounts a page of the list holds (board AdminUsers).
 const UsersPerPage = 50
 
+// maxPage keeps a huge ?page= from overflowing the offset.
+const maxPage = 100_000
+
 // UserFilter is one of the list's chips: ALL, NEW (this week), NOEMAIL, SUSPENDED or STAFF.
 type UserFilter struct {
 	Kind  string
@@ -64,7 +67,7 @@ func (s *Service) Users(ctx context.Context, f UserFilter) (UserPage, error) {
 	weekAgo := s.now().AddDate(0, 0, -7)
 	query := strings.TrimSpace(f.Query)
 	digits := digitsOf(query)
-	p := UserPage{Page: max(f.Page, 1)}
+	p := UserPage{Page: min(max(f.Page, 1), maxPage)}
 	var all, fresh, noEmail, suspended, staffCount int
 	err := s.pool.QueryRow(ctx, `
 		SELECT count(*), count(*) FILTER (WHERE created_at > $1 AND staff_role IS NULL),
