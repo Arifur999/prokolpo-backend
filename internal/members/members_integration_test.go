@@ -259,3 +259,41 @@ func TestInvitedNumberRegistersWhileClosedAndJoins(t *testing.T) {
 		t.Fatalf("team = %+v", team)
 	}
 }
+
+// An owner may only reset accounts that came to Prokolpo through their project; anyone else's
+// number added to a project must not turn into a password the owner sets.
+func TestOwnerCodeRefusesAccountsThatAreNotTheOwners(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	add := func(name, phone string) string {
+		id := addUser(t, f.pool, name, phone)
+		if _, err := f.svc.Invite(ctx, f.owner, f.project, NewInvite{Phone: phone, Role: project.RoleViewer}); err != nil {
+			t.Fatalf("invite %s: %v", name, err)
+		}
+		return id
+	}
+
+	older := add("রাশেদ", "01755889901")
+	if _, err := f.pool.Exec(ctx, `UPDATE users SET created_at = now() - interval '1 day' WHERE id = $1`, older); err != nil {
+		t.Fatal(err)
+	}
+	_, err := f.svc.IssueResetCode(ctx, f.owner, f.project, older)
+	wantCode(t, err, codeOwnAccount)
+
+	staff := add("করিম", "01755889902")
+	if _, err = f.pool.Exec(ctx, `UPDATE users SET staff_role = 'support' WHERE id = $1`, staff); err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.svc.IssueResetCode(ctx, f.owner, f.project, staff)
+	wantCode(t, err, codeOwnAccount)
+
+	elsewhere := add("সাইফুল", "01755889903")
+	if _, err = project.NewService(f.pool).Create(ctx, elsewhere, "নগদ ক্যাশ", project.NewProject{
+		Name: "নিজের দোকান", Kind: project.KindBuilding, Ownership: project.OwnershipPersonal, StartDate: time.Now(),
+		Categories: []string{"রড"}, Phases: []string{},
+	}); err != nil {
+		t.Fatalf("own project: %v", err)
+	}
+	_, err = f.svc.IssueResetCode(ctx, f.owner, f.project, elsewhere)
+	wantCode(t, err, codeOwnAccount)
+}
