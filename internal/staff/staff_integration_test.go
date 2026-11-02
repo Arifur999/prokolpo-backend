@@ -128,3 +128,37 @@ func TestFiveWrongCodesLockTheStepAndSessionsGoIdle(t *testing.T) {
 	f.svc.now = time.Now
 	wantCode(t, f.svc.Touch(ctx, f.staff, on.Session), codeSessionEnded)
 }
+
+// A panel session ends after a shift however busy it is, and as soon as the account stops
+// being active staff.
+func TestPanelSessionsEndWithTheShiftAndTheRole(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	f.svc.now = time.Now
+	start := func() string {
+		t.Helper()
+		if _, err := f.svc.pool.Exec(ctx, `UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_pending = NULL WHERE id = $1`, f.staff); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.svc.Begin(ctx, f.staff); err != nil {
+			t.Fatal(err)
+		}
+		on, err := f.svc.Enable(ctx, f.staff, f.appCode(t, "totp_pending", time.Now()), Meta{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return on.Session
+	}
+
+	long := start()
+	if _, err := f.svc.pool.Exec(ctx, `UPDATE staff_sessions SET created_at = now() - interval '13 hours'`); err != nil {
+		t.Fatal(err)
+	}
+	wantCode(t, f.svc.Touch(ctx, f.staff, long), codeSessionEnded)
+
+	removed := start()
+	if _, err := f.svc.pool.Exec(ctx, `UPDATE users SET staff_role = NULL WHERE id = $1`, f.staff); err != nil {
+		t.Fatal(err)
+	}
+	wantCode(t, f.svc.Touch(ctx, f.staff, removed), codeSessionEnded)
+}

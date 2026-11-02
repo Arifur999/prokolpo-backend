@@ -20,8 +20,10 @@ const (
 	maxFailures = 5
 	lockFor     = 15 * time.Minute
 	// IdleLimit is how long a panel session lasts without a request.
-	IdleLimit   = 30 * time.Minute
-	backupCount = 10
+	IdleLimit = 30 * time.Minute
+	// MaxSessionAge ends even a busy panel session: the app code is asked again after a shift.
+	MaxSessionAge = 12 * time.Hour
+	backupCount   = 10
 )
 
 // Service runs the second step and the panel sessions.
