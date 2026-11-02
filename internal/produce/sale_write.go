@@ -55,9 +55,15 @@ func (b saleBody) validate(lang string, today time.Time) (SaleInput, error) {
 	if b.Rate <= 0 || b.Rate > maxAmount {
 		f.add("rate", "rate")
 	}
-	in.Amount = int64(math.Round(in.Quantity * float64(b.Rate)))
-	if in.Amount > maxAmount {
+	// Checked as a float first: a huge product would not fit in int64. A sale also has to come
+	// to at least one taka (the column refuses 0).
+	if amount := math.Round(in.Quantity * float64(b.Rate)); amount > maxAmount {
 		f.add("quantity", "quantity")
+	} else {
+		in.Amount = int64(amount)
+		if in.Amount < 1 && in.Quantity > 0 && b.Rate > 0 {
+			f.add("rate", "rate")
+		}
 	}
 	in.Buyer = strings.TrimSpace(b.Buyer)
 	if in.Buyer == "" || len([]rune(in.Buyer)) > 80 {
