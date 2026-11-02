@@ -66,6 +66,7 @@ func TestResponderErrorMapsKinds(t *testing.T) {
 		{apperr.NotFound("gone"), http.StatusNotFound},
 		{apperr.Conflict("dup"), http.StatusConflict},
 		{apperr.TooManyRequests("slow"), http.StatusTooManyRequests},
+		{apperr.Unavailable("maintenance"), http.StatusServiceUnavailable},
 		{fmt.Errorf("load project: %w", apperr.NotFound("gone")), http.StatusNotFound},
 	}
 	for _, tt := range tests {

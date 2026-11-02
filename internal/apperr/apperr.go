@@ -17,6 +17,7 @@ const (
 	KindNotFound
 	KindConflict
 	KindTooManyRequests
+	KindUnavailable
 )
 
 // FieldError points at one invalid input field. Path uses the request's JSON
@@ -79,6 +80,9 @@ func Conflict(message string) error { return &Error{Kind: KindConflict, Message:
 func TooManyRequests(message string) error {
 	return &Error{Kind: KindTooManyRequests, Message: message}
 }
+
+// Unavailable reports a service that is down on purpose, such as maintenance.
+func Unavailable(message string) error { return &Error{Kind: KindUnavailable, Message: message} }
 
 // As returns the *Error in err's chain, if there is one.
 func As(err error) (*Error, bool) {
