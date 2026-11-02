@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 )
@@ -12,7 +13,7 @@ func TestClientIPTrustsTheLastHop(t *testing.T) {
 		{"6.6.6.6, 203.0.113.7", "203.0.113.7"},
 		{"203.0.113.7, not-an-ip", "192.0.2.1"},
 	} {
-		r := httptest.NewRequest("GET", "/", nil)
+		r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 		if tc.forwarded != "" {
 			r.Header.Set("X-Forwarded-For", tc.forwarded)
 		}
