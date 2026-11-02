@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Arifur999/prokolpo-backend/internal/httpx"
+	"github.com/Arifur999/prokolpo-backend/internal/token"
 )
 
 type fakeDB struct{ err error }
@@ -19,7 +21,7 @@ func (f fakeDB) Ping(context.Context) error { return f.err }
 func serve(t *testing.T, db fakeDB, method, path string) (*httptest.ResponseRecorder, map[string]any) {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	New(Deps{Log: slog.New(slog.DiscardHandler), DB: db}).ServeHTTP(rec, httptest.NewRequest(method, path, http.NoBody))
+	New(Deps{Log: slog.New(slog.DiscardHandler), DB: db, Issuer: token.NewIssuer([]byte("server-test-secret-32-bytes-long!"), time.Minute)}).ServeHTTP(rec, httptest.NewRequest(method, path, http.NoBody))
 
 	var body map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
@@ -67,5 +69,16 @@ func TestUnknownRouteIsEnvelope404(t *testing.T) {
 	}
 	if rec.Header().Get(httpx.RequestIDHeader) == "" {
 		t.Error("response has no request id")
+	}
+}
+
+func TestMeRequiresAToken(t *testing.T) {
+	rec, body := serve(t, fakeDB{}, http.MethodGet, "/api/v1/auth/me")
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rec.Code)
+	}
+	if body["code"] != "UNAUTHORIZED" {
+		t.Errorf("code = %v, want UNAUTHORIZED", body["code"])
 	}
 }

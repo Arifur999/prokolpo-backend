@@ -11,9 +11,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Arifur999/prokolpo-backend/internal/auth"
 	"github.com/Arifur999/prokolpo-backend/internal/config"
 	"github.com/Arifur999/prokolpo-backend/internal/database"
+	"github.com/Arifur999/prokolpo-backend/internal/mail"
 	"github.com/Arifur999/prokolpo-backend/internal/server"
+	"github.com/Arifur999/prokolpo-backend/internal/token"
 )
 
 // Run starts the API and blocks until ctx is cancelled or the server fails.
@@ -32,8 +35,11 @@ func Run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	}
 	defer pool.Close()
 
+	issuer := token.NewIssuer(cfg.JWTSecret, cfg.AccessTokenTTL)
+	authService := auth.NewService(pool, issuer, newMailer(cfg, log), cfg.AppURL, log)
+
 	srv := &http.Server{
-		Handler:           server.New(server.Deps{Log: log, DB: pool}),
+		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Issuer: issuer}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -80,4 +86,13 @@ func newLogger(cfg config.Config, w io.Writer) *slog.Logger {
 		return slog.New(slog.NewJSONHandler(w, opts))
 	}
 	return slog.New(slog.NewTextHandler(w, opts))
+}
+
+// newMailer sends through SMTP when it is configured and logs otherwise;
+// config refuses a production boot without SMTP.
+func newMailer(cfg config.Config, log *slog.Logger) mail.Sender {
+	if cfg.SMTP.Host == "" {
+		return mail.LogSender{Log: log}
+	}
+	return mail.SMTPSender{Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, Username: cfg.SMTP.Username, Password: cfg.SMTP.Password, From: cfg.SMTP.From}
 }
