@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/Arifur999/prokolpo-backend/internal/activity"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 )
 
@@ -62,6 +63,6 @@ func (s *Service) Transfer(ctx context.Context, userID, projectID string, t NewT
 		if err != nil {
 			return fmt.Errorf("insert transfer: %w", err)
 		}
-		return logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: "CREATE", entity: "transfer", entityID: id, summary: strconv.FormatInt(t.Amount, 10)})
+		return activity.Log(ctx, tx, activity.Entry{ProjectID: projectID, ActorID: userID, Action: "CREATE", Entity: "transfer", EntityID: id, Summary: strconv.FormatInt(t.Amount, 10)})
 	})
 }

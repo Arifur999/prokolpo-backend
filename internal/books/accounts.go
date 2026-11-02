@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/Arifur999/prokolpo-backend/internal/activity"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 )
 
@@ -163,7 +164,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID, projectID, lang str
 		if err != nil {
 			return fmt.Errorf("insert account: %w", err)
 		}
-		return logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: "CREATE", entity: "account", entityID: id, summary: na.Name})
+		return activity.Log(ctx, tx, activity.Entry{ProjectID: projectID, ActorID: userID, Action: "CREATE", Entity: "account", EntityID: id, Summary: na.Name})
 	})
 	if err != nil {
 		return Account{}, err

@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/Arifur999/prokolpo-backend/internal/activity"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 )
 
@@ -52,7 +53,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID, projectID, lang st
 		if err != nil {
 			return fmt.Errorf("insert category: %w", err)
 		}
-		return logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: "CREATE", entity: "category", entityID: c.ID, summary: c.Name})
+		return activity.Log(ctx, tx, activity.Entry{ProjectID: projectID, ActorID: userID, Action: "CREATE", Entity: "category", EntityID: c.ID, Summary: c.Name})
 	})
 	return c, err
 }

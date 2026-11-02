@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/Arifur999/prokolpo-backend/internal/activity"
 	"github.com/Arifur999/prokolpo-backend/internal/apperr"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 )
@@ -182,7 +183,7 @@ func (s *Service) CreateContractor(ctx context.Context, userID, projectID, lang 
 		if err != nil {
 			return fmt.Errorf("insert contractor: %w", err)
 		}
-		err = logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: "CREATE", entity: "contractor", entityID: id, summary: nc.Name})
+		err = activity.Log(ctx, tx, activity.Entry{ProjectID: projectID, ActorID: userID, Action: "CREATE", Entity: "contractor", EntityID: id, Summary: nc.Name})
 		if err != nil {
 			return err
 		}

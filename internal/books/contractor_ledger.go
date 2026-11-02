@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/Arifur999/prokolpo-backend/internal/activity"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 )
 
@@ -135,6 +136,6 @@ func (s *Service) AddExtra(ctx context.Context, userID, projectID, contractorID 
 		if markErr := markWorking(ctx, tx, contractorID); markErr != nil {
 			return markErr
 		}
-		return logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: "CREATE", entity: "extra", entityID: id, summary: ne.Title})
+		return activity.Log(ctx, tx, activity.Entry{ProjectID: projectID, ActorID: userID, Action: "CREATE", Entity: "extra", EntityID: id, Summary: ne.Title})
 	})
 }

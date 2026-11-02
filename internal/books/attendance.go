@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/Arifur999/prokolpo-backend/internal/activity"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 )
 
@@ -126,9 +127,9 @@ func (s *Service) SaveAttendance(ctx context.Context, userID, projectID string, 
 		if len(cells) == 0 {
 			return nil
 		}
-		return logActivity(ctx, tx, activity{
-			projectID: projectID, actorID: userID, action: "UPDATE", entity: "attendance", entityID: cells[0].ContractorID,
-			summary: strconv.Itoa(len(cells)),
+		return activity.Log(ctx, tx, activity.Entry{
+			ProjectID: projectID, ActorID: userID, Action: "UPDATE", Entity: "attendance", EntityID: cells[0].ContractorID,
+			Summary: strconv.Itoa(len(cells)),
 		})
 	})
 }

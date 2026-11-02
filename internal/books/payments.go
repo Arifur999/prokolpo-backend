@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/Arifur999/prokolpo-backend/internal/activity"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 )
 
@@ -104,7 +105,7 @@ func (s *Service) Pay(ctx context.Context, userID, projectID string, to Party, p
 				return markErr
 			}
 		}
-		return logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: "CREATE", entity: "payment", entityID: id, summary: fmt.Sprintf("৳ %d", p.Amount)})
+		return activity.Log(ctx, tx, activity.Entry{ProjectID: projectID, ActorID: userID, Action: "CREATE", Entity: "payment", EntityID: id, Summary: fmt.Sprintf("৳ %d", p.Amount)})
 	})
 }
 
@@ -126,6 +127,6 @@ func (s *Service) DeletePayment(ctx context.Context, userID, projectID, paymentI
 			}
 			return fmt.Errorf("delete payment: %w", err)
 		}
-		return logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: "DELETE", entity: "payment", entityID: paymentID, summary: fmt.Sprintf("৳ %d", amount), reason: reason})
+		return activity.Log(ctx, tx, activity.Entry{ProjectID: projectID, ActorID: userID, Action: "DELETE", Entity: "payment", EntityID: paymentID, Summary: fmt.Sprintf("৳ %d", amount), Reason: reason})
 	})
 }

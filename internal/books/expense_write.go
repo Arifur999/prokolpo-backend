@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/Arifur999/prokolpo-backend/internal/activity"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 )
 
@@ -155,7 +156,7 @@ func (s *Service) CreateExpense(ctx context.Context, userID, projectID string, i
 		if e, err = expenseByID(ctx, tx, projectID, id, false); err != nil {
 			return err
 		}
-		return logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: "CREATE", entity: "expense", entityID: id, summary: expenseSummary(e)})
+		return activity.Log(ctx, tx, activity.Entry{ProjectID: projectID, ActorID: userID, Action: "CREATE", Entity: "expense", EntityID: id, Summary: expenseSummary(e)})
 	})
 	return e, err
 }
@@ -198,9 +199,9 @@ func (s *Service) UpdateExpense(ctx context.Context, userID, projectID, expenseI
 		if after, err = expenseByID(ctx, tx, projectID, expenseID, false); err != nil {
 			return err
 		}
-		return logActivity(ctx, tx, activity{
-			projectID: projectID, actorID: userID, action: "UPDATE", entity: "expense", entityID: expenseID,
-			summary: expenseSummary(after), changes: expenseChanges(before, after), reason: in.Reason,
+		return activity.Log(ctx, tx, activity.Entry{
+			ProjectID: projectID, ActorID: userID, Action: "UPDATE", Entity: "expense", EntityID: expenseID,
+			Summary: expenseSummary(after), Changes: expenseChanges(before, after), Reason: in.Reason,
 		})
 	})
 	return after, err
@@ -239,7 +240,7 @@ func (s *Service) setExpenseDeleted(ctx context.Context, userID, projectID, expe
 		if _, err := tx.Exec(ctx, `UPDATE payments SET deleted_at = $2, deleted_by = $3 WHERE expense_id = $1 AND paid_with_expense`, expenseID, when, by); err != nil {
 			return fmt.Errorf("delete payment with expense: %w", err)
 		}
-		return logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: action, entity: "expense", entityID: expenseID, summary: expenseSummary(e), reason: reason})
+		return activity.Log(ctx, tx, activity.Entry{ProjectID: projectID, ActorID: userID, Action: action, Entity: "expense", EntityID: expenseID, Summary: expenseSummary(e), Reason: reason})
 	})
 }
 
@@ -249,7 +250,7 @@ func expenseSummary(e Expense) string {
 }
 
 // expenseChanges lists the fields an edit changed, in display form.
-func expenseChanges(before, after Expense) []Change {
+func expenseChanges(before, after Expense) []activity.Change {
 	str := func(p *string) string {
 		if p == nil {
 			return ""
@@ -262,7 +263,7 @@ func expenseChanges(before, after Expense) []Change {
 		}
 		return strconv.FormatInt(*p, 10)
 	}
-	candidates := []Change{
+	candidates := []activity.Change{
 		{Field: "category", Before: before.CategoryName, After: after.CategoryName},
 		{Field: "quantity", Before: str(before.Quantity) + " " + str(before.Unit), After: str(after.Quantity) + " " + str(after.Unit)},
 		{Field: "rate", Before: num(before.Rate), After: num(after.Rate)},
@@ -272,7 +273,7 @@ func expenseChanges(before, after Expense) []Change {
 		{Field: "date", Before: before.Date, After: after.Date},
 		{Field: "description", Before: str(before.Description), After: str(after.Description)},
 	}
-	changes := []Change{}
+	changes := []activity.Change{}
 	for _, c := range candidates {
 		if c.Before != c.After {
 			changes = append(changes, c)
