@@ -48,6 +48,7 @@ production image build.
 | `internal/storage` | uploaded files on local disk under `UPLOAD_DIR` (default `data/uploads`) |
 | `internal/books` | a project's money: expenses, suppliers, contractors, attendance, payments, accounts |
 | `internal/partners` | a joint project's partners: shares, commitments, capital calls, deposits and their receipts |
+| `internal/sales` | units, customers, sales on installments, collections and their receipts |
 | `internal/members` | a project's team: invitations by phone, roles, removal, owner-issued reset codes |
 | `internal/activity`, `internal/timeline` | writing the activity log inside each change; reading it for the activity page |
 | `internal/token`, `internal/password`, `internal/phone` | access/opaque tokens, argon2id, BD mobile numbers |
@@ -178,6 +179,23 @@ and capital calls, owners and managers take deposits.
 | `GET /partner-deposits/{did}/receipt`, `POST .../printed` | the receipt as printed, with owed and paid as of it |
 
 Receipt numbers (`PRK-000148`) run per project and are never reused.
+
+## Sales
+
+Under `/projects/{id}`; members read, owners and managers write.
+
+| Endpoint | Notes |
+| --- | --- |
+| `GET /units`, `POST /units` | units by floor with their sale and its standing; POST `units[]` adds one or a block (used names skipped in a block) |
+| `PUT, DELETE /units/{uid}` | a sold unit can't be deleted (`UNIT_HAS_SALE`) |
+| `GET, POST /customers`, `GET /customers/{cid}` | buyers with their sales; a number already used returns that buyer |
+| `GET /sales`, `GET /sales/{sid}` | sales with standing (received, due, next, oldest late); the detail has the schedule and payments |
+| `POST /sales` | `unitId, customerId \| customer{name, phone, nid?, address?}, date, price, down, installments (0 = full price), intervalMonths (1, 3, 6), firstDue, accountId` |
+| `POST /sales/{sid}/payments` | `amount, accountId, date?, note?`; fills the oldest installments first, never past what is owed |
+| `GET /sale-payments/{pid}/receipt`, `POST .../printed` | the receipt, with the installments it covered and the next one |
+
+Installments are even parts rounded down to ৳100; the last one takes the rest. Payments are kept, the schedule is
+worked out from them.
 
 ## Database
 
