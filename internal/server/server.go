@@ -16,6 +16,7 @@ import (
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 	"github.com/Arifur999/prokolpo-backend/internal/sales"
 	"github.com/Arifur999/prokolpo-backend/internal/shop"
+	"github.com/Arifur999/prokolpo-backend/internal/staff"
 	"github.com/Arifur999/prokolpo-backend/internal/status"
 	"github.com/Arifur999/prokolpo-backend/internal/support"
 	"github.com/Arifur999/prokolpo-backend/internal/timeline"
@@ -35,6 +36,7 @@ type Deps struct {
 	Sales    *sales.Service
 	Produce  *produce.Service
 	Shop     *shop.Service
+	Staff    *staff.Service
 	Activity *timeline.Service
 	Status   status.Source
 	Issuer   *token.Issuer
@@ -58,6 +60,7 @@ func New(deps Deps) http.Handler {
 	produce.NewHandler(deps.Produce, responder).Register(mux, requireUser)
 	shop.NewHandler(deps.Shop, responder).Register(mux, requireUser)
 	timeline.NewHandler(deps.Activity, responder).Register(mux, requireUser)
+	staff.NewHandler(deps.Staff, responder).Register(mux, requireUser)
 	support.NewHandler(deps.Support, responder).Register(mux, auth.OptionalUser(deps.Issuer))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		responder.Error(w, r, apperr.NotFound("This endpoint does not exist."))

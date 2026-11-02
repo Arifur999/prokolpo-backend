@@ -23,6 +23,7 @@ import (
 	"github.com/Arifur999/prokolpo-backend/internal/sales"
 	"github.com/Arifur999/prokolpo-backend/internal/server"
 	"github.com/Arifur999/prokolpo-backend/internal/shop"
+	"github.com/Arifur999/prokolpo-backend/internal/staff"
 	"github.com/Arifur999/prokolpo-backend/internal/status"
 	"github.com/Arifur999/prokolpo-backend/internal/storage"
 	"github.com/Arifur999/prokolpo-backend/internal/support"
@@ -55,9 +56,13 @@ func Run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 
 	projects := project.NewService(pool)
 	authService := auth.NewService(pool, issuer, newMailer(cfg, log), cfg.AppURL, log)
+	staffService, err := staff.NewService(pool, cfg.JWTSecret)
+	if err != nil {
+		return err
+	}
 
 	srv := &http.Server{
-		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Support: support.NewService(pool), Project: projects, Books: books.NewService(pool, projects, uploads), Members: members.NewService(pool, projects), Partners: partners.NewService(pool, projects), Sales: sales.NewService(pool, projects), Produce: produce.NewService(pool, projects), Shop: shop.NewService(pool, projects), Activity: timeline.NewService(pool, projects), Status: status.NewService(pool), Issuer: issuer}),
+		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Support: support.NewService(pool), Project: projects, Books: books.NewService(pool, projects, uploads), Members: members.NewService(pool, projects), Partners: partners.NewService(pool, projects), Sales: sales.NewService(pool, projects), Produce: produce.NewService(pool, projects), Shop: shop.NewService(pool, projects), Activity: timeline.NewService(pool, projects), Staff: staffService, Status: status.NewService(pool), Issuer: issuer}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

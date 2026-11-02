@@ -1,9 +1,7 @@
 package auth
 
 import (
-	"net"
 	"net/http"
-	"net/netip"
 	"strings"
 
 	"github.com/Arifur999/prokolpo-backend/internal/apperr"
@@ -221,7 +219,7 @@ func (h *Handler) checkInvite(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	invite, err := h.svc.CheckInvite(r.Context(), req.Phone, clientIP(r), httpx.Lang(r))
+	invite, err := h.svc.CheckInvite(r.Context(), req.Phone, httpx.ClientIP(r), httpx.Lang(r))
 	if err != nil {
 		h.fail(w, r, err)
 		return
@@ -256,20 +254,5 @@ func clientMeta(r *http.Request) ClientMeta {
 	if len(ua) > 300 {
 		ua = ua[:300]
 	}
-	return ClientMeta{UserAgent: ua, IP: clientIP(r)}
-}
-
-func clientIP(r *http.Request) string {
-	first, _, _ := strings.Cut(r.Header.Get("X-Forwarded-For"), ",")
-	if addr, err := netip.ParseAddr(strings.TrimSpace(first)); err == nil {
-		return addr.String()
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return ""
-	}
-	if addr, err := netip.ParseAddr(host); err == nil {
-		return addr.String()
-	}
-	return ""
+	return ClientMeta{UserAgent: ua, IP: httpx.ClientIP(r)}
 }
