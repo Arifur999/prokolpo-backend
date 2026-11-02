@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Arifur999/prokolpo-backend/internal/auth"
+	"github.com/Arifur999/prokolpo-backend/internal/books"
 	"github.com/Arifur999/prokolpo-backend/internal/config"
 	"github.com/Arifur999/prokolpo-backend/internal/database"
 	"github.com/Arifur999/prokolpo-backend/internal/mail"
@@ -39,10 +40,11 @@ func Run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	defer pool.Close()
 
 	issuer := token.NewIssuer(cfg.JWTSecret, cfg.AccessTokenTTL)
+	projects := project.NewService(pool)
 	authService := auth.NewService(pool, issuer, newMailer(cfg, log), cfg.AppURL, log)
 
 	srv := &http.Server{
-		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Support: support.NewService(pool), Project: project.NewService(pool), Status: status.NewService(pool), Issuer: issuer}),
+		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Support: support.NewService(pool), Project: projects, Books: books.NewService(pool, projects), Status: status.NewService(pool), Issuer: issuer}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

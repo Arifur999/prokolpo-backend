@@ -7,6 +7,7 @@ import (
 
 	"github.com/Arifur999/prokolpo-backend/internal/apperr"
 	"github.com/Arifur999/prokolpo-backend/internal/auth"
+	"github.com/Arifur999/prokolpo-backend/internal/books"
 	"github.com/Arifur999/prokolpo-backend/internal/health"
 	"github.com/Arifur999/prokolpo-backend/internal/httpx"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
@@ -22,6 +23,7 @@ type Deps struct {
 	Auth    *auth.Service
 	Support *support.Service
 	Project *project.Service
+	Books   *books.Service
 	Status  status.Source
 	Issuer  *token.Issuer
 }
@@ -37,6 +39,7 @@ func New(deps Deps) http.Handler {
 	requireUser := auth.RequireUser(deps.Issuer, responder)
 	auth.NewHandler(deps.Auth, responder).Register(mux, requireUser)
 	project.NewHandler(deps.Project, responder).Register(mux, requireUser)
+	books.NewHandler(deps.Books, responder).Register(mux, requireUser)
 	support.NewHandler(deps.Support, responder).Register(mux, auth.OptionalUser(deps.Issuer))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		responder.Error(w, r, apperr.NotFound("This endpoint does not exist."))

@@ -45,6 +45,7 @@ production image build.
 | `internal/health` | `GET /api/v1/health` |
 | `internal/auth` | registration, login, rotating sessions, password reset |
 | `internal/project` | projects, their starting books, membership checks, delete and restore |
+| `internal/books` | a project's money: expenses, suppliers, contractors, attendance, payments, accounts, activity log |
 | `internal/token`, `internal/password`, `internal/phone` | access/opaque tokens, argon2id, BD mobile numbers |
 | `internal/ratelimit`, `internal/mail` | in-memory limits (single instance), SMTP and log mailers |
 | `internal/testdb` | migrated, emptied database for integration tests (name must end in `_test`) |
@@ -114,6 +115,27 @@ All routes need `Authorization: Bearer <accessToken>`. A project someone is not 
 or `PARTNERSHIP` and cannot change later. Kind details (`floors`, `batches`, `plots`, `landArea`, `landUnit`,
 `businessType`) are kept only for their kind. Categories and phases come worded by the client, in the creator's
 language, exactly as its preview showed them.
+
+## Books
+
+Under `/projects/{id}`; members read, owners and managers write (viewers get 403 `READ_ONLY_ROLE`).
+
+| Endpoint | Notes |
+| --- | --- |
+| `GET /overview` | cash, dues, this and last month's spending, 12 months, spending by head (labour as one row), recent entries |
+| `GET, POST /categories` | expense heads in order; POST adds one at the end |
+| `GET, POST /expenses` | list filters `from, to, category, phase, party, paid=credit\|cash, q, page, limit` (10 a page) with a summary; POST `paidNow` + `accountId` also records a payment of the full amount |
+| `GET, PUT /expenses/{eid}` | PUT logs the changed fields and an optional `reason` |
+| `POST /expenses/{eid}/delete`, `/restore` | soft delete with optional `reason`; the on-the-spot payment goes and comes back with it |
+| `GET, POST /suppliers`, `GET /suppliers/{sid}` | dues are bills + opening − payments; a negative due is an advance; the detail has the running ledger |
+| `POST /suppliers/{sid}/payments`, `/contractors/{cid}/payments` | `accountId, amount, date, expenseId?, purpose?, note?` |
+| `GET, POST /contractors`, `GET /contractors/{cid}` | `payType` CONTRACT (`contractAmount`) or DAILY (`dailyWage`, `teamSize`); the ledger sums attendance per Sunday–Saturday week |
+| `PATCH /contractors/{cid}/status`, `POST /contractors/{cid}/extras` | NOT_STARTED, WORKING, DONE; extra work raises what is owed |
+| `GET /attendance?week=`, `PUT /attendance` | daily teams for the week holding the date; PUT `cells[{contractorId, day, headcount, halfDay}]`, 0 clears a day; a day keeps the wage it was first saved at |
+| `GET, POST /accounts`, `GET /accounts/ledger`, `POST /transfers` | balances may go negative; transfers are not spending |
+| `POST /payments/{pid}/delete` | not for a payment made with a bill |
+
+Spending (`project_spent`) is every bill plus labour: daily wages, extra work, and contract payments up to the contract.
 
 ## Database
 
