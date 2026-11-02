@@ -31,7 +31,7 @@ func newFamily() string {
 
 // issueSession signs an access token and stores a new refresh token in family.
 func (s *Service) issueSession(ctx context.Context, q db, user User, family string, remember bool, meta ClientMeta) (Session, error) {
-	access, accessExpires, err := s.issuer.Issue(user.ID, user.Role())
+	access, accessExpires, err := s.issuer.IssueFor(user.ID, user.Role(), family)
 	if err != nil {
 		return Session{}, err
 	}

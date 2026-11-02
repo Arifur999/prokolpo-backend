@@ -23,7 +23,11 @@ type User struct {
 	CreatedAt    time.Time
 }
 
-const statusSuspended = "suspended"
+const (
+	statusActive    = "active"
+	statusSuspended = "suspended"
+	statusDeleted   = "deleted"
+)
 
 // IsSuspended reports whether the account is blocked from signing in.
 func (u User) IsSuspended() bool { return u.Status == statusSuspended }

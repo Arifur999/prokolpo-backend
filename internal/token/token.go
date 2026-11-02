@@ -25,13 +25,17 @@ var ErrInvalid = errors.New("invalid access token")
 
 // Claims is what the API learns from a valid access token.
 type Claims struct {
-	UserID   string
-	Role     string
-	IssuedAt time.Time
+	UserID string
+	Role   string
+	// SessionID is the login (refresh-token family) the token was issued for; empty on
+	// tokens from before it was added.
+	SessionID string
+	IssuedAt  time.Time
 }
 
 type accessClaims struct {
-	Role string `json:"role"`
+	Role      string `json:"role"`
+	SessionID string `json:"sid,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -49,10 +53,16 @@ func NewIssuer(secret []byte, ttl time.Duration) *Issuer {
 
 // Issue returns a signed access token for userID and when it expires.
 func (is *Issuer) Issue(userID, role string) (string, time.Time, error) {
+	return is.IssueFor(userID, role, "")
+}
+
+// IssueFor is Issue for one login, so a device can be signed out on its own.
+func (is *Issuer) IssueFor(userID, role, sessionID string) (string, time.Time, error) {
 	now := is.now()
 	expires := now.Add(is.ttl)
 	claims := accessClaims{
 		Role:      role,
+		SessionID: sessionID,
 		Subject:   userID,
 		IssuedAt:  jwt.NewNumericDate(now),
 		ExpiresAt: jwt.NewNumericDate(expires),
@@ -76,7 +86,7 @@ func (is *Issuer) Parse(raw string) (Claims, error) {
 	if err != nil || claims.Subject == "" {
 		return Claims{}, ErrInvalid
 	}
-	c := Claims{UserID: claims.Subject, Role: claims.Role}
+	c := Claims{UserID: claims.Subject, Role: claims.Role, SessionID: claims.SessionID}
 	if claims.IssuedAt != nil {
 		c.IssuedAt = claims.IssuedAt.Time
 	}
