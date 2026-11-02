@@ -16,7 +16,7 @@ var accountKinds = []string{"CASH", "BANK", "MOBILE"}
 
 // movementsCTE is every movement of money through a project's accounts ($1 is the
 // project): starting balances, payments out, partner deposits in, and both legs of each
-// transfer, and money customers paid for units.
+// transfer, money customers paid for units, and what farm buyers paid.
 const movementsCTE = `
 WITH movements AS (
 	SELECT a.id::text AS ref, 'OPENING' AS kind, a.id AS account_id, (a.created_at AT TIME ZONE 'Asia/Dhaka')::date AS date,
@@ -38,6 +38,9 @@ WITH movements AS (
 	SELECT sp.id::text, 'COLLECTION', sp.account_id, sp.date, sp.created_at, sp.amount, c.name, u.name, sp.note, NULL
 	FROM sale_payments sp JOIN sales sl ON sl.id = sp.sale_id JOIN customers c ON c.id = sl.customer_id JOIN units u ON u.id = sl.unit_id
 	WHERE sp.project_id = $1
+	UNION ALL
+	SELECT r.id::text, 'PRODUCE', r.account_id, r.date, r.created_at, r.amount, b.name, NULL, NULL, NULL
+	FROM produce_receipts r JOIN produce_buyers b ON b.id = r.buyer_id WHERE r.project_id = $1
 	UNION ALL
 	SELECT t.id::text, 'TRANSFER_OUT', t.from_account_id, t.date, t.created_at, -t.amount, NULL, NULL, t.note, b.name
 	FROM transfers t JOIN money_accounts b ON b.id = t.to_account_id WHERE t.project_id = $1
