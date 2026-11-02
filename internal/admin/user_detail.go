@@ -137,9 +137,11 @@ func (s *Service) userProjects(ctx context.Context, d *UserDetail) error {
 
 func (s *Service) userDevices(ctx context.Context, d *UserDetail) error {
 	rows, err := s.pool.Query(ctx, `
-		SELECT DISTINCT ON (family_id) user_agent, host(ip), created_at
-		FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL AND rotated_at IS NULL AND expires_at > now()
-		ORDER BY family_id, created_at DESC`, d.ID)
+		SELECT user_agent, ip, last_used FROM (
+			SELECT DISTINCT ON (family_id) user_agent, host(ip) AS ip, created_at AS last_used
+			FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL AND rotated_at IS NULL AND expires_at > now()
+			ORDER BY family_id, created_at DESC
+		) f ORDER BY last_used DESC`, d.ID)
 	if err != nil {
 		return fmt.Errorf("user devices: %w", err)
 	}
