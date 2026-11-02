@@ -16,6 +16,7 @@ import (
 	"github.com/Arifur999/prokolpo-backend/internal/produce"
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 	"github.com/Arifur999/prokolpo-backend/internal/sales"
+	"github.com/Arifur999/prokolpo-backend/internal/settings"
 	"github.com/Arifur999/prokolpo-backend/internal/shop"
 	"github.com/Arifur999/prokolpo-backend/internal/staff"
 	"github.com/Arifur999/prokolpo-backend/internal/status"
@@ -37,6 +38,7 @@ type Deps struct {
 	Sales    *sales.Service
 	Produce  *produce.Service
 	Shop     *shop.Service
+	Settings *settings.Service
 	Staff    *staff.Service
 	Admin    *admin.Service
 	Activity *timeline.Service
@@ -61,6 +63,7 @@ func New(deps Deps) http.Handler {
 	sales.NewHandler(deps.Sales, responder).Register(mux, requireUser)
 	produce.NewHandler(deps.Produce, responder).Register(mux, requireUser)
 	shop.NewHandler(deps.Shop, responder).Register(mux, requireUser)
+	settings.NewHandler(deps.Settings, responder).Register(mux, requireUser)
 	timeline.NewHandler(deps.Activity, responder).Register(mux, requireUser)
 	staffHandler := staff.NewHandler(deps.Staff, responder)
 	staffHandler.Register(mux, requireUser)
