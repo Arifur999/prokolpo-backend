@@ -20,7 +20,7 @@ func TestRunServesHealthAndShutsDown(t *testing.T) {
 		t.Skip("TEST_DATABASE_URL is not set")
 	}
 	addr := freeAddr(t)
-	env := map[string]string{"APP_ENV": "test", "HTTP_ADDR": addr, "DATABASE_URL": dbURL, "LOG_LEVEL": "error"}
+	env := map[string]string{"APP_ENV": "test", "HTTP_ADDR": addr, "DATABASE_URL": dbURL, "LOG_LEVEL": "error", "JWT_SECRET": "integration-test-secret-32-bytes-long"}
 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)

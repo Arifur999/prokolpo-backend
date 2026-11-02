@@ -49,7 +49,8 @@ jobs:
           go run ./cmd/migrate down
           go run ./cmd/migrate up
       - name: Tests (unit + integration)
-        run: go test -race -shuffle=on -tags=integration -covermode=atomic -coverprofile=cover.out ./...
+        # -p 1: integration tests share one database and empty its tables.
+        run: go test -race -shuffle=on -tags=integration -p 1 -covermode=atomic -coverprofile=cover.out ./...
       - run: go tool cover -func=cover.out | tail -1
 
   lint:
