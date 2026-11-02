@@ -25,7 +25,7 @@ func setup(t *testing.T) fixture {
 	t.Helper()
 	ctx := context.Background()
 	pool := testdb.Open(t)
-	f := fixture{svc: NewService(pool), pool: pool}
+	f := fixture{svc: NewService(pool, nil, nil), pool: pool}
 	if err := pool.QueryRow(ctx, `INSERT INTO users (first_name, last_name, phone, password_hash, terms_accepted_at, staff_role)
 		VALUES ('মাহমুদ', 'হাসান', '01700112233', 'x', now(), 'super_admin') RETURNING id`).Scan(&f.staff); err != nil {
 		t.Fatalf("add staff: %v", err)

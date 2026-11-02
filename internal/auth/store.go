@@ -70,8 +70,18 @@ func touchLastLogin(ctx context.Context, q db, userID string) error {
 }
 
 func updatePassword(ctx context.Context, q db, userID, hash string) error {
-	_, err := q.Exec(ctx, `UPDATE users SET password_hash = $2 WHERE id = $1`, userID, hash)
+	_, err := q.Exec(ctx, `UPDATE users SET password_hash = $2, password_changed_at = now() WHERE id = $1`, userID, hash)
 	return err
+}
+
+// recordLogin keeps a sign-in or a wrong password for the account's security history.
+func recordLogin(ctx context.Context, q db, userID string, ok bool, meta ClientMeta) error {
+	_, err := q.Exec(ctx, `INSERT INTO login_events (user_id, ok, ip, user_agent) VALUES ($1, $2, nullif($3, ''), nullif($4, ''))`,
+		userID, ok, meta.IP, meta.UserAgent)
+	if err != nil {
+		return fmt.Errorf("record login: %w", err)
+	}
+	return nil
 }
 
 func registrationMode(ctx context.Context, q db) (string, error) {

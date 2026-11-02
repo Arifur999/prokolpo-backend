@@ -3,24 +3,44 @@
 package admin
 
 import (
+	"context"
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Arifur999/prokolpo-backend/internal/auth"
 	"github.com/Arifur999/prokolpo-backend/internal/httpx"
+	"github.com/Arifur999/prokolpo-backend/internal/staff"
 )
+
+// Confirmer checks a staff member's app code before a sensitive action.
+type Confirmer interface {
+	Confirm(ctx context.Context, userID, code string, meta staff.Meta) error
+}
+
+// ResetLinks emails an account its password-reset link.
+type ResetLinks interface {
+	SendResetLink(ctx context.Context, rawPhone, lang string) error
+}
 
 // Service reads and changes things across every account.
 type Service struct {
-	pool *pgxpool.Pool
-	now  func() time.Time
+	pool    *pgxpool.Pool
+	confirm Confirmer
+	links   ResetLinks
+	now     func() time.Time
 }
 
 // NewService returns a Service backed by pool.
-func NewService(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool, now: time.Now}
+func NewService(pool *pgxpool.Pool, confirm Confirmer, links ResetLinks) *Service {
+	return &Service{pool: pool, confirm: confirm, links: links, now: time.Now}
+}
+
+func isID(s string) bool {
+	var id pgtype.UUID
+	return id.Scan(s) == nil
 }
 
 var dhaka = time.FixedZone("Asia/Dhaka", 6*60*60)
@@ -43,11 +63,13 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.Handler) http.Han
 	}
 	route("GET", "/overview", h.overview)
 	route("GET", "/badges", h.badges)
+	h.registerUsers(route)
 }
 
 func (h *Handler) reply(w http.ResponseWriter, r *http.Request, status int, data any, err error) {
 	if err != nil {
-		h.responder.Error(w, r, Localize(err, httpx.Lang(r)))
+		lang := httpx.Lang(r)
+		h.responder.Error(w, r, staff.Localize(Localize(err, lang), lang))
 		return
 	}
 	h.responder.JSON(w, r, status, "", data)

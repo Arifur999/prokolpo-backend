@@ -117,3 +117,29 @@ func (s *Service) fail(ctx context.Context, tx pgx.Tx, userID string, m member, 
 	}
 	return wrongCode(backup, maxFailures-failures), nil
 }
+
+// Confirm checks an app code before a sensitive action (changing a number, suspending an
+// account); wrong codes count toward the same lockout as signing in.
+func (s *Service) Confirm(ctx context.Context, userID, code string, meta Meta) error {
+	var refusal error
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		m, err := load(ctx, tx, userID, true)
+		if err != nil {
+			return err
+		}
+		if m.LockedUntil != nil && m.LockedUntil.After(s.now()) {
+			refusal = messages.Fail(apperr.KindTooManyRequests, codeLocked)
+			return nil
+		}
+		ok, err := s.check(ctx, tx, userID, m, code, false)
+		if err != nil || ok {
+			return err
+		}
+		refusal, err = s.fail(ctx, tx, userID, m, false, meta)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return refusal
+}

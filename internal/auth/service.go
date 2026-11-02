@@ -174,6 +174,12 @@ func (s *Service) Login(ctx context.Context, rawID, pw string, remember bool, me
 	}
 	if err != nil || !match {
 		s.loginFailures.Hit(id.key())
+		if err == nil {
+			// A wrong password on a real account goes in its security history.
+			if logErr := recordLogin(ctx, s.pool, user.ID, false, meta); logErr != nil {
+				return Session{}, logErr
+			}
+		}
 		return Session{}, messages.Fail(apperr.KindUnauthorized, codeInvalidCredentials)
 	}
 	// Only after the right password, so suspension does not reveal which numbers have accounts.
@@ -185,6 +191,9 @@ func (s *Service) Login(ctx context.Context, rawID, pw string, remember bool, me
 	var session Session
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		if txErr := touchLastLogin(ctx, tx, user.ID); txErr != nil {
+			return txErr
+		}
+		if txErr := recordLogin(ctx, tx, user.ID, true, meta); txErr != nil {
 			return txErr
 		}
 		var txErr error

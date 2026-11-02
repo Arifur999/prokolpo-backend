@@ -12,6 +12,7 @@ import (
 
 	"github.com/Arifur999/prokolpo-backend/internal/activity"
 	"github.com/Arifur999/prokolpo-backend/internal/apperr"
+	"github.com/Arifur999/prokolpo-backend/internal/audit"
 	"github.com/Arifur999/prokolpo-backend/internal/password"
 	"github.com/Arifur999/prokolpo-backend/internal/token"
 )
@@ -44,10 +45,11 @@ func ownerForCode(ctx context.Context, q db, userID string) (*codeOwner, error) 
 
 // codeRow is the newest live code issued to a member.
 type codeRow struct {
-	ID, ProjectID string
-	Hash          []byte
-	TriesLeft     int
-	ExpiresAt     time.Time
+	ID        string
+	ProjectID *string
+	Hash      []byte
+	TriesLeft int
+	ExpiresAt time.Time
 }
 
 // ResetWithCode sets a new password with the code the project's owner gave, and signs
@@ -116,10 +118,14 @@ func (s *Service) applyCodeReset(ctx context.Context, tx pgx.Tx, user User, c co
 	if err := revokeAllForUser(ctx, tx, user.ID); err != nil {
 		return err
 	}
+	name := user.FirstName + " " + user.LastName
+	if c.ProjectID == nil {
+		// A code from support: the admin log shows it was used.
+		return audit.Log(ctx, tx, audit.Entry{ActorID: &user.ID, Action: "user.code_used", TargetType: "user", TargetID: user.ID, Summary: name})
+	}
 	// The owner sees on the activity page that the code was used.
 	return activity.Log(ctx, tx, activity.Entry{
-		ProjectID: c.ProjectID, ActorID: user.ID, Action: "UPDATE", Entity: "password", EntityID: user.ID,
-		Summary: user.FirstName + " " + user.LastName,
+		ProjectID: *c.ProjectID, ActorID: user.ID, Action: "UPDATE", Entity: "password", EntityID: user.ID, Summary: name,
 	})
 }
 
