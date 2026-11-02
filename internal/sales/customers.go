@@ -23,19 +23,30 @@ type Customer struct {
 	AltPhone  *string   `json:"altPhone"`
 	Note      *string   `json:"note"`
 	CreatedAt time.Time `json:"createdAt"`
+	AddedBy   string    `json:"addedBy"`
 	Sales     []Sale    `json:"sales"`
+	// Payments, newest first, are filled only on a single customer's profile.
+	Payments []CustomerPayment `json:"payments,omitempty"`
+}
+
+// CustomerPayment is a payment on one of the customer's sales.
+type CustomerPayment struct {
+	Payment
+	SaleID   string `json:"saleId"`
+	UnitName string `json:"unitName"`
 }
 
 func customersOf(ctx context.Context, q db, projectID, customerID string) ([]Customer, error) {
 	rows, err := q.Query(ctx, `
-		SELECT id, name, phone, nid, address, alt_phone, note, created_at FROM customers
-		WHERE project_id = $1 AND ($2 = '' OR id::text = $2) ORDER BY created_at DESC`, projectID, customerID)
+		SELECT c.id, c.name, c.phone, c.nid, c.address, c.alt_phone, c.note, c.created_at, u.first_name || ' ' || u.last_name
+		FROM customers c JOIN users u ON u.id = c.created_by
+		WHERE c.project_id = $1 AND ($2 = '' OR c.id::text = $2) ORDER BY c.created_at DESC`, projectID, customerID)
 	if err != nil {
 		return nil, fmt.Errorf("list customers: %w", err)
 	}
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Customer, error) {
 		c := Customer{Sales: []Sale{}}
-		scanErr := row.Scan(&c.ID, &c.Name, &c.Phone, &c.NID, &c.Address, &c.AltPhone, &c.Note, &c.CreatedAt)
+		scanErr := row.Scan(&c.ID, &c.Name, &c.Phone, &c.NID, &c.Address, &c.AltPhone, &c.Note, &c.CreatedAt, &c.AddedBy)
 		return c, scanErr
 	})
 }
@@ -63,7 +74,29 @@ func (s *Service) Customer(ctx context.Context, userID, projectID, customerID st
 	if len(list) == 0 {
 		return Customer{}, notFound()
 	}
-	return list[0], nil
+	c := list[0]
+	rows, err := s.pool.Query(ctx, `
+		SELECT p.id, p.kind, p.date, p.amount, a.name, a.kind, p.note, pr.receipt_prefix || '-' || lpad(p.receipt_no::text, 6, '0'),
+		       u.first_name || ' ' || u.last_name, p.created_at, sl.id, un.name
+		FROM sale_payments p
+		JOIN sales sl ON sl.id = p.sale_id
+		JOIN units un ON un.id = sl.unit_id
+		JOIN money_accounts a ON a.id = p.account_id
+		JOIN projects pr ON pr.id = p.project_id
+		JOIN users u ON u.id = p.created_by
+		WHERE sl.customer_id = $1 ORDER BY p.date DESC, p.receipt_no DESC`, customerID)
+	if err != nil {
+		return Customer{}, fmt.Errorf("list customer payments: %w", err)
+	}
+	c.Payments, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (CustomerPayment, error) {
+		var p CustomerPayment
+		scanErr := row.Scan(&p.ID, &p.Kind, &p.Date, &p.Amount, &p.Account, &p.AccountKind, &p.Note, &p.ReceiptNo, &p.TakenBy, &p.CreatedAt, &p.SaleID, &p.UnitName)
+		return p, scanErr
+	})
+	if err != nil {
+		return Customer{}, fmt.Errorf("list customer payments: %w", err)
+	}
+	return c, nil
 }
 
 func (s *Service) customersWithSales(ctx context.Context, projectID, customerID string) ([]Customer, error) {
