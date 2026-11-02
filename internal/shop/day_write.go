@@ -122,6 +122,9 @@ func (s *Service) SaveDay(ctx context.Context, userID, projectID, lang string, i
 				return invalid(lang, "cashAccountId", "account")
 			}
 		}
+		if err := lockPeople(ctx, tx, projectID, in); err != nil {
+			return err
+		}
 		dayID, action, err := upsertDay(ctx, tx, userID, projectID, in)
 		if err != nil {
 			return err
@@ -138,11 +141,52 @@ func (s *Service) SaveDay(ctx context.Context, userID, projectID, lang string, i
 		if err := payBack(ctx, tx, userID, projectID, lang, dayID, in); err != nil {
 			return err
 		}
+		if err := noneOverpaid(ctx, tx, projectID, lang); err != nil {
+			return err
+		}
 		total := in.Cash + in.Mobile + sum(in.Credits)
 		return activity.Log(ctx, tx, activity.Entry{
 			ProjectID: projectID, ActorID: userID, Action: action, Entity: "shop_day", EntityID: dayID, Summary: in.Date.Format(time.DateOnly),
 			Details: map[string]string{"amount": strconv.FormatInt(total, 10)},
 		})
+	})
+}
+
+// lockPeople locks everyone this save touches, the day's old lines and its new ones, in id
+// order, so a payback taken at the same moment (Collect locks the same rows) waits its turn.
+func lockPeople(ctx context.Context, tx pgx.Tx, projectID string, in DayInput) error {
+	names := make([]string, 0, len(in.Credits)+len(in.Collects))
+	for _, l := range append(append([]Line{}, in.Credits...), in.Collects...) {
+		names = append(names, strings.ToLower(l.Name))
+	}
+	_, err := tx.Exec(ctx, `
+		SELECT 1 FROM khata_people p
+		WHERE p.project_id = $1 AND (lower(p.name) = ANY($3) OR p.id IN (
+			SELECT k.person_id FROM khata_entries k JOIN shop_days d ON d.id = k.day_id
+			WHERE d.project_id = $1 AND d.date = $2))
+		ORDER BY p.id FOR UPDATE OF p`, projectID, in.Date, names)
+	if err != nil {
+		return fmt.Errorf("lock credit people: %w", err)
+	}
+	return nil
+}
+
+// noneOverpaid refuses an edit that takes away credit someone has already paid back.
+func noneOverpaid(ctx context.Context, tx pgx.Tx, projectID, lang string) error {
+	var name string
+	err := tx.QueryRow(ctx, `
+		SELECT p.name FROM khata_people p JOIN khata_entries k ON k.person_id = p.id
+		WHERE p.project_id = $1
+		GROUP BY p.id HAVING sum(CASE k.kind WHEN 'CREDIT' THEN k.amount ELSE -k.amount END) < 0
+		LIMIT 1`, projectID).Scan(&name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("check credit book: %w", err)
+	}
+	return messages.Fail(apperr.KindInvalid, codeInvalidInput, apperr.FieldError{
+		Path: "credits", Message: strings.ReplaceAll(fieldMessages["paidBack"].In(lang), "{name}", name),
 	})
 }
 

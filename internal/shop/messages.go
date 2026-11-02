@@ -28,6 +28,7 @@ var fieldMessages = map[string]msg.Text{
 	"unknown":  {BN: "এই নামে খাতায় কেউ নেই", EN: "Nobody by this name is in the credit book"},
 	"overpaid": {BN: "খাতায় বাকির চেয়ে বেশি শোধ লেখা হয়েছে", EN: "This is more than they owe"},
 	"text":     {BN: "লেখাটা অনেক বড় হয়ে গেছে", EN: "This is too long"},
+	"paidBack": {BN: "{name}-এর এই বাকি আগেই শোধ হয়েছে — বাকিটা মুছতে হলে আগে শোধের হিসাব ঠিক করুন", EN: "{name} already paid this credit back — fix that payment before removing the credit"},
 	"tooMany":  {BN: "একদিনে 50 জনের বেশি লেখা যায় না", EN: "Up to 50 people a day"},
 }
 

@@ -145,3 +145,25 @@ func TestPaybacksCannotPassWhatIsOwed(t *testing.T) {
 		t.Fatalf("khata after paying = %+v", b.Khata)
 	}
 }
+
+// Credit that was already paid back can't be edited away: the payment would be left with
+// nothing to pay off and the cash book would drift from the credit book.
+func TestAnEditCannotRemoveCreditAlreadyPaidBack(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	day := dayBody{Date: "2026-10-02", Cash: 1000, Credits: []lineBody{{Name: "রহিম", Amount: 5000}}}
+	if err := f.save(t, day); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	person := f.book(t).Khata[0].ID
+	if err := f.svc.Collect(ctx, f.owner, f.project, person, httpx.LangBangla, CollectInput{Amount: 5000, AccountID: f.cash}); err != nil {
+		t.Fatalf("collect: %v", err)
+	}
+	day.Credits = nil
+	wantCode(t, f.save(t, day), codeInvalidInput)
+	day.Credits = []lineBody{{Name: "রহিম", Amount: 5000}}
+	day.Cash = 1500
+	if err := f.save(t, day); err != nil {
+		t.Fatalf("an edit that keeps the credit: %v", err)
+	}
+}
