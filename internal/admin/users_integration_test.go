@@ -67,6 +67,9 @@ func TestStaffFindAndHelpAnAccount(t *testing.T) {
 		t.Fatalf("note: %v", err)
 	}
 
+	_, err = f.svc.IssueResetCode(ctx, a, f.staff, "নিজের জন্য কোড")
+	wantCode(t, err, codeStaffReset)
+
 	err = f.svc.SetSuspended(ctx, a, f.owner, true, "ছোট", "123456")
 	wantCode(t, err, codeInvalidInput)
 	if err = f.svc.SetSuspended(ctx, a, f.owner, true, "প্রতারণার অভিযোগ — তদন্ত চলছে", "000000"); err == nil {

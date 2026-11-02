@@ -13,6 +13,7 @@ const (
 	codeNoLink        = "NO_RESET_LINK"
 	codeSuspendedUser = "USER_SUSPENDED"
 	codeStaffAccount  = "STAFF_ACCOUNT"
+	codeStaffReset    = "STAFF_RESET"
 )
 
 var messages = msg.Catalog{
@@ -21,6 +22,7 @@ var messages = msg.Catalog{
 	codeNotAllowed:    {BN: "আপনার ভূমিকায় এই কাজটা করা যায় না", EN: "Your staff role can't do this"},
 	codeNoLink:        {BN: "ইমেইল দেওয়া নেই বা অ্যাকাউন্ট বন্ধ — রিসেট লিংক পাঠানো যাবে না", EN: "No email, or the account is suspended — a reset link can't be sent"},
 	codeSuspendedUser: {BN: "অ্যাকাউন্ট বন্ধ আছে", EN: "The account is suspended"},
+	codeStaffReset:    {BN: "স্টাফের পাসওয়ার্ড কোড দিয়ে বদলানো যায় না — রিসেট লিংক পাঠান", EN: "A staff password can't be reset with a code — send a reset link"},
 	codeStaffAccount:  {BN: "স্টাফের অ্যাকাউন্ট এখান থেকে বন্ধ করা যায় না", EN: "Staff accounts can't be suspended here"},
 }
 

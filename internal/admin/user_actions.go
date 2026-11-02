@@ -110,6 +110,10 @@ func (s *Service) IssueResetCode(ctx context.Context, a Actor, userID, note stri
 		if u.status != "active" {
 			return messages.Fail(apperr.KindInvalid, codeSuspendedUser)
 		}
+		// A code read out over the phone would let support set another staff member's password.
+		if u.role != nil {
+			return messages.Fail(apperr.KindForbidden, codeStaffReset)
+		}
 		n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
 		if err != nil {
 			return fmt.Errorf("draw reset code: %w", err)
