@@ -16,6 +16,7 @@ import (
 	"github.com/Arifur999/prokolpo-backend/internal/database"
 	"github.com/Arifur999/prokolpo-backend/internal/mail"
 	"github.com/Arifur999/prokolpo-backend/internal/server"
+	"github.com/Arifur999/prokolpo-backend/internal/support"
 	"github.com/Arifur999/prokolpo-backend/internal/token"
 )
 
@@ -39,7 +40,7 @@ func Run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	authService := auth.NewService(pool, issuer, newMailer(cfg, log), cfg.AppURL, log)
 
 	srv := &http.Server{
-		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Issuer: issuer}),
+		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Support: support.NewService(pool), Issuer: issuer}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

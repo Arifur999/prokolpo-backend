@@ -47,7 +47,7 @@ func Open(t *testing.T) *pgxpool.Pool {
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	if _, err := pool.Exec(ctx, `TRUNCATE users, refresh_tokens, password_reset_tokens CASCADE;
+	if _, err := pool.Exec(ctx, `TRUNCATE users, refresh_tokens, password_reset_tokens, support_requests CASCADE;
 		UPDATE app_settings SET value = '"open"' WHERE key = 'registration_mode'`); err != nil {
 		t.Fatalf("reset tables: %v", err)
 	}
