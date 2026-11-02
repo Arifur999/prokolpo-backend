@@ -33,6 +33,8 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	mux.HandleFunc("POST /api/v1/auth/password/email", h.sendResetLink)
 	mux.HandleFunc("POST /api/v1/auth/password/check", h.checkResetLink)
 	mux.HandleFunc("POST /api/v1/auth/password/reset", h.resetPassword)
+	mux.HandleFunc("POST /api/v1/auth/password/code", h.resetWithCode)
+	mux.HandleFunc("POST /api/v1/auth/invite", h.checkInvite)
 }
 
 func (h *Handler) fail(w http.ResponseWriter, r *http.Request, err error) {
@@ -192,6 +194,39 @@ func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.responder.JSON(w, r, http.StatusOK, "", nil)
+}
+
+type codeResetRequest struct {
+	Phone    string `json:"phone"`
+	Code     string `json:"code"`
+	Password string `json:"password"`
+}
+
+func (h *Handler) resetWithCode(w http.ResponseWriter, r *http.Request) {
+	var req codeResetRequest
+	if err := httpx.DecodeJSON(w, r, &req); err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	if err := h.svc.ResetWithCode(r.Context(), req.Phone, req.Code, req.Password, httpx.Lang(r)); err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	h.responder.JSON(w, r, http.StatusOK, "", nil)
+}
+
+func (h *Handler) checkInvite(w http.ResponseWriter, r *http.Request) {
+	var req phoneRequest
+	if err := httpx.DecodeJSON(w, r, &req); err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	invite, err := h.svc.CheckInvite(r.Context(), req.Phone, clientIP(r), httpx.Lang(r))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	h.responder.JSON(w, r, http.StatusOK, "", invite)
 }
 
 // required reports which of the named fields are blank.

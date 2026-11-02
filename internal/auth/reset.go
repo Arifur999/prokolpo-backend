@@ -24,8 +24,10 @@ type ResetOptions struct {
 	Name        string  `json:"name"`
 	MaskedEmail *string `json:"maskedEmail"`
 	CanUseEmail bool    `json:"canUseEmail"`
-	// The owner-issued code arrives with project members; always false until then.
-	CanUseOwnerCode bool `json:"canUseOwnerCode"`
+	// A member (not an owner) can ask their project's owner for a reset code.
+	CanUseOwnerCode bool    `json:"canUseOwnerCode"`
+	OwnerName       *string `json:"ownerName"`
+	ProjectName     *string `json:"projectName"`
 }
 
 // ResetOptions looks the account up by phone, as the design's first step does.
@@ -39,6 +41,13 @@ func (s *Service) ResetOptions(ctx context.Context, rawPhone, lang string) (Rese
 		masked := maskEmail(*user.Email)
 		opts.MaskedEmail = &masked
 		opts.CanUseEmail = true
+	}
+	owner, err := ownerForCode(ctx, s.pool, user.ID)
+	if err != nil {
+		return ResetOptions{}, err
+	}
+	if owner != nil {
+		opts.CanUseOwnerCode, opts.OwnerName, opts.ProjectName = true, &owner.OwnerName, &owner.ProjectName
 	}
 	return opts, nil
 }

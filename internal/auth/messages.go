@@ -19,6 +19,11 @@ const (
 	codeResetLinkInvalid   = "RESET_LINK_INVALID"
 	codeResetLinkExpired   = "RESET_LINK_EXPIRED"
 	codeResetLinkUsed      = "RESET_LINK_USED"
+	codeResetCodeInvalid   = "RESET_CODE_INVALID"
+	codeResetCodeExpired   = "RESET_CODE_EXPIRED"
+	codeResetCodeLocked    = "RESET_CODE_LOCKED"
+	codeResetCodeWrong     = "RESET_CODE_WRONG"
+	codeNoInvite           = "NO_INVITE"
 )
 
 var messages = msg.Catalog{
@@ -37,10 +42,17 @@ var messages = msg.Catalog{
 	codeResetLinkInvalid:   {BN: "এই লিংক আর কাজ করবে না — নতুন লিংক নিন", EN: "This link no longer works — request a new one"},
 	codeResetLinkExpired:   {BN: "লিংকের মেয়াদ শেষ", EN: "This link has expired"},
 	codeResetLinkUsed:      {BN: "এই লিংক আগেই ব্যবহার হয়েছে", EN: "This link was already used"},
+	codeResetCodeInvalid:   {BN: "এই অ্যাকাউন্টের জন্য কোনো কোড নেই — মালিকের কাছ থেকে কোড নিন", EN: "There is no code for this account — ask the owner for one"},
+	codeResetCodeExpired:   {BN: "কোডের মেয়াদ শেষ — মালিকের কাছ থেকে নতুন কোড নিন", EN: "This code has expired — ask the owner for a new one"},
+	codeResetCodeLocked:    {BN: "অনেকবার ভুল হয়েছে — মালিকের কাছ থেকে নতুন কোড নিন", EN: "Too many wrong tries — ask the owner for a new code"},
+	codeResetCodeWrong:     {BN: "কোড মেলেনি", EN: "The code didn't match"},
+	codeNoInvite:           {BN: "এই নম্বরে কোনো আমন্ত্রণ নেই — প্রজেক্টের মালিককে বলুন আপনাকে মেম্বার হিসেবে যোগ করতে, তারপর আবার চেষ্টা করুন", EN: "This number has no invitation — ask the project's owner to add you as a member, then try again"},
 }
 
 // Field messages for registration and reset validation.
 var fieldMessages = map[string]msg.Text{
+	"codeShort":    {BN: "পুরো ৬ অঙ্কের কোড দিন", EN: "Enter all 6 digits of the code"},
+	"codeWrong":    {BN: "কোড মেলেনি — আর %d বার চেষ্টা করা যাবে", EN: "The code didn't match — %d tries left"},
 	"companyShort": {BN: "কোম্পানির নাম কমপক্ষে ২ অক্ষরের হতে হবে", EN: "Company name must be at least 2 characters"},
 	"companyLong":  {BN: "কোম্পানির নাম ৮০ অক্ষরের বেশি হতে পারবে না", EN: "Company name can't be longer than 80 characters"},
 	"firstLong":    {BN: "প্রথম নাম ৩০ অক্ষরের বেশি হতে পারবে না", EN: "First name can't be longer than 30 characters"},

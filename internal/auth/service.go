@@ -59,6 +59,7 @@ type Service struct {
 	log           *slog.Logger
 	loginFailures *ratelimit.Window
 	resetSends    *ratelimit.Window
+	inviteChecks  *ratelimit.Window
 }
 
 // NewService wires the auth service. appURL is the frontend origin used in emailed links.
@@ -67,6 +68,7 @@ func NewService(pool *pgxpool.Pool, issuer *token.Issuer, mailer mail.Sender, ap
 		pool: pool, issuer: issuer, mailer: mailer, appURL: appURL, log: log,
 		loginFailures: ratelimit.New(maxLoginFailures, loginFailureWindow),
 		resetSends:    ratelimit.New(1, time.Minute),
+		inviteChecks:  ratelimit.New(20, time.Minute),
 	}
 }
 
@@ -81,10 +83,15 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, meta ClientMet
 	if err != nil {
 		return Session{}, fmt.Errorf("read registration mode: %w", err)
 	}
-	// Invite-only needs project invitations, which arrive with the members
-	// feature; until then it behaves like closed.
+	// While registration is closed or invite-only, an invited number may still register.
 	if mode != modeOpen {
-		return Session{}, messages.Fail(apperr.KindForbidden, codeRegistrationClosed)
+		invited, inviteErr := hasInvite(ctx, s.pool, in.Phone)
+		if inviteErr != nil {
+			return Session{}, fmt.Errorf("check invite: %w", inviteErr)
+		}
+		if !invited {
+			return Session{}, messages.Fail(apperr.KindForbidden, codeRegistrationClosed)
+		}
 	}
 
 	phoneTaken, emailTaken, err := phoneOrEmailTaken(ctx, s.pool, in.Phone, in.Email)
@@ -108,6 +115,9 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, meta ClientMet
 		})
 		if txErr != nil {
 			return txErr
+		}
+		if joinErr := acceptInvites(ctx, tx, user); joinErr != nil {
+			return joinErr
 		}
 		session, txErr = s.issueSession(ctx, tx, user, newFamily(), true, meta)
 		return txErr
