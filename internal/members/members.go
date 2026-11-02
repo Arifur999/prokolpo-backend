@@ -42,6 +42,7 @@ type Member struct {
 	Phone      string     `json:"phone"`
 	Role       string     `json:"role"`
 	IsYou      bool       `json:"isYou"`
+	IsPartner  bool       `json:"isPartner"`
 	JoinedAt   time.Time  `json:"joinedAt"`
 	LastActive *time.Time `json:"lastActive"`
 	// Entries is how many changes they made to the project this month.
@@ -69,7 +70,8 @@ func (s *Service) Team(ctx context.Context, userID, projectID string) (Team, err
 		return Team{}, err
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT u.id, u.first_name || ' ' || u.last_name, u.phone, m.role, u.id = $2, m.created_at,
+		SELECT u.id, u.first_name || ' ' || u.last_name, u.phone, m.role, u.id = $2,
+		       EXISTS (SELECT 1 FROM partners pt WHERE pt.project_id = m.project_id AND pt.phone = u.phone), m.created_at,
 		       greatest(u.last_login_at, (SELECT max(r.created_at) FROM refresh_tokens r WHERE r.user_id = u.id)),
 		       (SELECT count(*)::int FROM activity_log a WHERE a.project_id = m.project_id AND a.actor_id = u.id AND a.created_at >= $3)
 		FROM project_members m JOIN users u ON u.id = m.user_id

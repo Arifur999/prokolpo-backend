@@ -86,38 +86,40 @@ type Added struct {
 
 // Invite adds a number to the team, or keeps an invitation for it until it registers.
 func (s *Service) Invite(ctx context.Context, userID, projectID string, in NewInvite) (Added, error) {
-	added := Added{Phone: in.Phone}
+	var added Added
 	err := s.owned(ctx, userID, projectID, func(tx pgx.Tx) error {
-		var memberID, name string
-		err := tx.QueryRow(ctx, `SELECT id, first_name || ' ' || last_name FROM users WHERE phone = $1`, in.Phone).Scan(&memberID, &name)
-		switch {
-		case errors.Is(err, pgx.ErrNoRows):
-			return s.keepInvite(ctx, tx, userID, projectID, in)
-		case err != nil:
-			return fmt.Errorf("find user: %w", err)
-		}
-		tag, err := tx.Exec(ctx, `
-			INSERT INTO project_members (project_id, user_id, role) VALUES ($1, $2, $3)
-			ON CONFLICT (project_id, user_id) DO NOTHING`, projectID, memberID, in.Role)
-		if err != nil {
-			return fmt.Errorf("add member: %w", err)
-		}
-		if tag.RowsAffected() == 0 {
-			return messages.Fail(apperr.KindConflict, codeAlreadyMember)
-		}
-		added.Status, added.Name = StatusMember, &name
-		return logEntry(ctx, tx, projectID, userID, "CREATE", "member", memberID, name, map[string]string{"role": in.Role, "phone": in.Phone})
+		var err error
+		added, err = Join(ctx, tx, userID, projectID, in)
+		return err
 	})
-	if err != nil {
-		return Added{}, err
-	}
-	if added.Status == "" {
-		added.Status = StatusPending
-	}
-	return added, nil
+	return added, err
 }
 
-func (s *Service) keepInvite(ctx context.Context, tx pgx.Tx, userID, projectID string, in NewInvite) error {
+// Join puts a number on the team inside the caller's transaction: an account joins at
+// once, any other number waits as an invitation. The caller has checked the actor may.
+func Join(ctx context.Context, tx pgx.Tx, actorID, projectID string, in NewInvite) (Added, error) {
+	var memberID, name string
+	err := tx.QueryRow(ctx, `SELECT id, first_name || ' ' || last_name FROM users WHERE phone = $1`, in.Phone).Scan(&memberID, &name)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return Added{Status: StatusPending, Phone: in.Phone}, keepInvite(ctx, tx, actorID, projectID, in)
+	case err != nil:
+		return Added{}, fmt.Errorf("find user: %w", err)
+	}
+	tag, err := tx.Exec(ctx, `
+		INSERT INTO project_members (project_id, user_id, role) VALUES ($1, $2, $3)
+		ON CONFLICT (project_id, user_id) DO NOTHING`, projectID, memberID, in.Role)
+	if err != nil {
+		return Added{}, fmt.Errorf("add member: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return Added{}, messages.Fail(apperr.KindConflict, codeAlreadyMember)
+	}
+	added := Added{Status: StatusMember, Name: &name, Phone: in.Phone}
+	return added, logEntry(ctx, tx, projectID, actorID, "CREATE", "member", memberID, name, map[string]string{"role": in.Role, "phone": in.Phone})
+}
+
+func keepInvite(ctx context.Context, tx pgx.Tx, userID, projectID string, in NewInvite) error {
 	var id string
 	err := tx.QueryRow(ctx, `
 		INSERT INTO project_invites (project_id, phone, role, invited_by) VALUES ($1, $2, $3, $4)
