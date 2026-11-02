@@ -17,5 +17,28 @@ services:
       timeout: 3s
       retries: 30
 
+  migrate:
+    profiles: [app]
+    build: .
+    entrypoint: ["migrate", "up"]
+    environment:
+      DATABASE_URL: postgres://prokolpo:prokolpo@db:5432/prokolpo?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    profiles: [app]
+    build: .
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgres://prokolpo:prokolpo@db:5432/prokolpo?sslmode=disable
+      LOG_LEVEL: debug
+    ports:
+      - "5000:5000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
   pgdata:
