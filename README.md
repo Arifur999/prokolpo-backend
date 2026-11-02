@@ -49,6 +49,8 @@ production image build.
 | `internal/books` | a project's money: expenses, suppliers, contractors, attendance, payments, accounts |
 | `internal/partners` | a joint project's partners: shares, commitments, capital calls, deposits and their receipts |
 | `internal/sales` | units, customers, sales on installments, collections and their receipts |
+| `internal/produce` | a farm's sales by batch, what buyers owe, and batch dates and head counts |
+| `internal/shop` | a shop's day book (one entry a day) and its credit book |
 | `internal/members` | a project's team: invitations by phone, roles, removal, owner-issued reset codes |
 | `internal/activity`, `internal/timeline` | writing the activity log inside each change; reading it for the activity page |
 | `internal/token`, `internal/password`, `internal/phone` | access/opaque tokens, argon2id, BD mobile numbers |
@@ -196,6 +198,29 @@ Under `/projects/{id}`; members read, owners and managers write.
 
 Installments are even parts rounded down to ৳100; the last one takes the rest. Payments are kept, the schedule is
 worked out from them.
+
+## Farm and shop sales
+
+Under `/projects/{id}`; members read, owners and managers write.
+
+| Endpoint | Notes |
+| --- | --- |
+| `GET /produce` | batches (cost, sales, kilos sold), the setup phase's cost, sales with what is still owed, buyer dues, buyers |
+| `POST /produce` | `product, phaseId?, quantity, unit, rate, buyer, date, received, accountId`; the product must suit the farm type |
+| `POST /produce/buyers/{bid}/payments` | `amount, accountId`; clears the buyer's oldest sales first, never past their due |
+| `PUT /batches/{phid}` | `startedOn, endedOn (empty = running), headCount, losses, note` |
+| `GET /shop` | the last year of days, the credit book (due, oldest unpaid credit, last taken), monthly spending |
+| `PUT /shop/days` | `date, cash, mobile, other, note, counted, cashAccountId, mobileAccountId, credits[], collects[]`; writes or rewrites that day |
+| `POST /shop/khata/{pid}/payments` | `amount, accountId`; credit paid back today |
+
+A farm's first phase is its setup (the shed, the pond); its spending is what batch profits pay back. Paybacks in a
+day's entry go into its cash account.
+
+## Reports
+
+`GET /projects/{id}/reports/expenses?from=&to=` gives a period's spending by head (labour as its own head), by
+phase against budget (plus what fell outside any phase), by month, and by supplier (billed and paid). Installment,
+profit and dues reports are worked out on the page from the sales, partner and books data.
 
 ## Database
 
