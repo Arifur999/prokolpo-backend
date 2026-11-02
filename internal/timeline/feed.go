@@ -82,10 +82,10 @@ const feedSelect = `
 	       a.actor_id, u.first_name || ' ' || u.last_name, a.created_at,
 	       coalesce(ec.name, x.title),
 	       CASE WHEN e.quantity IS NULL THEN NULL ELSE trim_scale(e.quantity)::text END, e.unit,
-	       coalesce(e.amount, p.amount, t.amount, x.amount),
-	       coalesce(es.name, ecn.name, ps.name, pc.name, xc.name, ac.name),
-	       coalesce(pa.name, ta.name), tb.name,
-	       p.purpose, coalesce(p.note, t.note, e.description), ph.name,
+	       coalesce(e.amount, p.amount, t.amount, x.amount, pd.amount, cc.total),
+	       coalesce(es.name, ecn.name, ps.name, pc.name, xc.name, ac.name, pdp.name),
+	       coalesce(pa.name, ta.name, pda.name), tb.name,
+	       p.purpose, coalesce(p.note, t.note, e.description, pd.note), ph.name,
 	       EXISTS (SELECT 1 FROM payments pw WHERE pw.expense_id = e.id AND pw.paid_with_expense AND pw.deleted_at IS NULL),
 	       a.entity = 'expense' AND a.action = 'DELETE' AND e.deleted_at IS NOT NULL
 	FROM activity_log a
@@ -105,6 +105,10 @@ const feedSelect = `
 	LEFT JOIN contractor_extras x ON a.entity = 'extra' AND x.id = a.entity_id
 	LEFT JOIN contractors xc ON xc.id = x.contractor_id
 	LEFT JOIN contractors ac ON a.entity = 'attendance' AND ac.id = a.entity_id
+	LEFT JOIN partner_deposits pd ON a.entity = 'deposit' AND pd.id = a.entity_id
+	LEFT JOIN partners pdp ON pdp.id = pd.partner_id
+	LEFT JOIN money_accounts pda ON pda.id = pd.account_id
+	LEFT JOIN capital_calls cc ON a.entity = 'call' AND cc.id = a.entity_id
 	WHERE a.project_id = $1
 	  AND ($2::uuid IS NULL OR a.actor_id = $2)
 	  AND ($3::text IS NULL OR a.action = $3 OR ($3 = 'CREATE' AND a.action = 'RESTORE'))

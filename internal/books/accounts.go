@@ -15,8 +15,8 @@ import (
 var accountKinds = []string{"CASH", "BANK", "MOBILE"}
 
 // movementsCTE is every movement of money through a project's accounts ($1 is the
-// project): starting balances, payments out, and both legs of each transfer. Partner
-// deposits and installments join it when the sales books arrive.
+// project): starting balances, payments out, partner deposits in, and both legs of each
+// transfer. Sale installments join it when the sales books arrive.
 const movementsCTE = `
 WITH movements AS (
 	SELECT a.id::text AS ref, 'OPENING' AS kind, a.id AS account_id, (a.created_at AT TIME ZONE 'Asia/Dhaka')::date AS date,
@@ -31,6 +31,9 @@ WITH movements AS (
 	LEFT JOIN expenses e ON e.id = p.expense_id
 	LEFT JOIN expense_categories ec ON ec.id = e.category_id
 	WHERE p.project_id = $1 AND p.deleted_at IS NULL
+	UNION ALL
+	SELECT d.id::text, 'DEPOSIT', d.account_id, d.date, d.created_at, d.amount, pt.name, NULL, d.note, NULL
+	FROM partner_deposits d JOIN partners pt ON pt.id = d.partner_id WHERE d.project_id = $1
 	UNION ALL
 	SELECT t.id::text, 'TRANSFER_OUT', t.from_account_id, t.date, t.created_at, -t.amount, NULL, NULL, t.note, b.name
 	FROM transfers t JOIN money_accounts b ON b.id = t.to_account_id WHERE t.project_id = $1
