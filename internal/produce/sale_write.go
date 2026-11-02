@@ -139,10 +139,11 @@ func checkSale(ctx context.Context, tx pgx.Tx, projectID, lang string, in SaleIn
 		f.add("product", "product")
 	}
 	if in.PhaseID != nil {
-		if ok, err := inProject(ctx, tx, "project_phases", projectID, *in.PhaseID); err != nil || !ok {
-			if err != nil {
-				return err
-			}
+		ok, err := isBatch(ctx, tx, projectID, *in.PhaseID)
+		if err != nil {
+			return err
+		}
+		if !ok {
 			f.add("phaseId", "batch")
 		}
 	}
@@ -155,6 +156,19 @@ func checkSale(ctx context.Context, tx pgx.Tx, projectID, lang string, in SaleIn
 		}
 	}
 	return f.err()
+}
+
+// isBatch reports whether a phase is one of the farm's batches (not its setup).
+func isBatch(ctx context.Context, q db, projectID, phaseID string) (bool, error) {
+	if !isID(phaseID) {
+		return false, nil
+	}
+	var ok bool
+	err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM project_phases WHERE id = $1 AND project_id = $2 AND NOT setup)`, phaseID, projectID).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("check batch: %w", err)
+	}
+	return ok, nil
 }
 
 // upsertBuyer finds a buyer by name, ignoring case, or adds them.

@@ -55,8 +55,8 @@ func seedBooks(ctx context.Context, tx pgx.Tx, projectID, ownerID, cashName stri
 		return fmt.Errorf("add categories: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO project_phases (project_id, name, position)
-		SELECT $1, name, ord FROM unnest($2::text[]) WITH ORDINALITY AS t(name, ord)`, projectID, np.Phases); err != nil {
+		INSERT INTO project_phases (project_id, name, position, setup)
+		SELECT $1, name, ord, $3 AND ord = 1 FROM unnest($2::text[]) WITH ORDINALITY AS t(name, ord)`, projectID, np.Phases, np.Kind == KindFarm); err != nil {
 		return fmt.Errorf("add phases: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO money_accounts (project_id, name, kind) VALUES ($1, $2, 'CASH')`, projectID, cashName); err != nil {

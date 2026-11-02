@@ -57,8 +57,8 @@ type Buyer struct {
 	Name string `json:"name"`
 }
 
-// Book is everything the farm sales page shows. SetupCost is what was spent outside any
-// batch (the shed, the pond) that batch profits pay back.
+// Book is everything the farm sales page shows. SetupCost is what was spent setting the
+// farm up (the shed, the pond) or outside any batch, which batch profits pay back.
 type Book struct {
 	FarmType  string  `json:"farmType"`
 	Batches   []Batch `json:"batches"`
@@ -80,7 +80,8 @@ func loadBook(ctx context.Context, q db, projectID string) (Book, error) {
 	var b Book
 	err := q.QueryRow(ctx, `
 		SELECT coalesce(p.farm_type, ''),
-		       coalesce((SELECT sum(amount) FROM expenses e WHERE e.project_id = p.id AND e.phase_id IS NULL AND e.deleted_at IS NULL), 0)
+		       coalesce((SELECT sum(e.amount) FROM expenses e LEFT JOIN project_phases ph ON ph.id = e.phase_id
+		                 WHERE e.project_id = p.id AND e.deleted_at IS NULL AND (ph.id IS NULL OR ph.setup)), 0)
 		FROM projects p WHERE p.id = $1`, projectID).Scan(&b.FarmType, &b.SetupCost)
 	if err != nil {
 		return Book{}, fmt.Errorf("load farm: %w", err)
@@ -115,7 +116,7 @@ func batchesOf(ctx context.Context, q db, projectID string) ([]Batch, error) {
 			       sum(amount) FILTER (WHERE unit = 'KG' AND product <> 'OTHER') AS weight_amount
 			FROM produce_sales WHERE phase_id = ph.id
 		) s ON true
-		WHERE ph.project_id = $1 ORDER BY ph.position, ph.created_at`, projectID)
+		WHERE ph.project_id = $1 AND NOT ph.setup ORDER BY ph.position, ph.created_at`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list batches: %w", err)
 	}

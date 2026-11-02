@@ -36,7 +36,7 @@ func setup(t *testing.T) fixture {
 	poultry := "POULTRY"
 	p, err := projects.Create(ctx, owner, "নগদ ক্যাশ", project.NewProject{
 		Name: "সাভার পোল্ট্রি খামার", Kind: project.KindFarm, Ownership: project.OwnershipPersonal, StartDate: time.Now(),
-		FarmType: &poultry, Categories: []string{"বাচ্চা", "খাবার"}, Phases: []string{"১ম ব্যাচ", "২য় ব্যাচ"},
+		FarmType: &poultry, Categories: []string{"বাচ্চা", "খাবার"}, Phases: []string{"শেড তৈরি", "১ম ব্যাচ", "২য় ব্যাচ"},
 	})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
@@ -46,13 +46,19 @@ func setup(t *testing.T) fixture {
 	if err := pool.QueryRow(ctx, `SELECT id FROM money_accounts WHERE project_id = $1`, p.ID).Scan(&f.cash); err != nil {
 		t.Fatalf("account: %v", err)
 	}
-	if err := pool.QueryRow(ctx, `SELECT id FROM project_phases WHERE project_id = $1 ORDER BY position LIMIT 1`, p.ID).Scan(&f.batch); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT id FROM project_phases WHERE project_id = $1 AND NOT setup ORDER BY position LIMIT 1`, p.ID).Scan(&f.batch); err != nil {
 		t.Fatalf("batch: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO expenses (project_id, category_id, phase_id, date, amount, created_by)
 		SELECT $1, c.id, $2, '2026-09-01', 412000, $3 FROM expense_categories c WHERE c.project_id = $1 LIMIT 1`, p.ID, f.batch, owner); err != nil {
 		t.Fatalf("batch expense: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO expenses (project_id, category_id, phase_id, date, amount, created_by)
+		SELECT $1, c.id, ph.id, '2026-08-01', 650000, $2 FROM expense_categories c, project_phases ph
+		WHERE c.project_id = $1 AND ph.project_id = $1 AND ph.setup LIMIT 1`, p.ID, owner); err != nil {
+		t.Fatalf("shed expense: %v", err)
 	}
 	return f
 }
@@ -99,6 +105,9 @@ func TestABatchEarnsAgainstWhatItCost(t *testing.T) {
 	book, err := f.svc.Book(ctx, f.owner, f.project)
 	if err != nil {
 		t.Fatalf("book: %v", err)
+	}
+	if book.SetupCost != 650_000 || len(book.Batches) != 2 {
+		t.Fatalf("setup %d with batches %+v; want the shed apart from two batches", book.SetupCost, book.Batches)
 	}
 	b := book.Batches[0]
 	if b.Cost != 412_000 || b.Sales != 504_980 || b.Weight != 3040 || b.WeightSales != 500_480 || b.EndedOn == nil || b.Losses != 48 {

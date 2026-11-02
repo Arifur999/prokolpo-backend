@@ -1,13 +1,19 @@
 -- +goose Up
 -- What a farm sells: birds, eggs, litter, milk, fish, crops. A batch is one of the
 -- project's phases; its dates and head count let the sales page show profit per batch.
+-- A farm's first phase is its setup (the shed, the pond), which batch profits pay back.
 ALTER TABLE project_phases
+  ADD COLUMN setup       boolean NOT NULL DEFAULT false,
   ADD COLUMN started_on  date,
   ADD COLUMN ended_on    date,
   ADD COLUMN head_count  integer CHECK (head_count > 0),
   ADD COLUMN losses      integer NOT NULL DEFAULT 0 CHECK (losses >= 0),
   ADD COLUMN note        text,
   ADD CHECK (ended_on IS NULL OR started_on IS NULL OR ended_on >= started_on);
+
+UPDATE project_phases ph SET setup = true
+FROM projects p WHERE p.id = ph.project_id AND p.kind = 'FARM'
+  AND ph.position = (SELECT min(position) FROM project_phases WHERE project_id = p.id);
 
 -- Wholesalers and shops that buy from the farm, by name.
 CREATE TABLE produce_buyers (
@@ -57,4 +63,4 @@ DROP TABLE produce_receipts;
 DROP TABLE produce_sales;
 DROP TABLE produce_buyers;
 ALTER TABLE project_phases
-  DROP COLUMN started_on, DROP COLUMN ended_on, DROP COLUMN head_count, DROP COLUMN losses, DROP COLUMN note;
+  DROP COLUMN setup, DROP COLUMN started_on, DROP COLUMN ended_on, DROP COLUMN head_count, DROP COLUMN losses, DROP COLUMN note;
