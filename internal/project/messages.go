@@ -9,6 +9,7 @@ const (
 	codeOwnerOnly     = "OWNER_ONLY"
 	codeRestoreClosed = "RESTORE_WINDOW_CLOSED"
 	codeReadOnly      = "READ_ONLY_ROLE"
+	codeProjectDone   = "PROJECT_DONE"
 )
 
 var messages = msg.Catalog{
@@ -16,6 +17,7 @@ var messages = msg.Catalog{
 	codeNotFound:      {BN: "প্রজেক্টটা পাওয়া যায়নি", EN: "Project not found"},
 	codeOwnerOnly:     {BN: "এটা শুধু প্রজেক্টের মালিক করতে পারেন", EN: "Only the project's owner can do this"},
 	codeReadOnly:      {BN: "আপনি এই প্রজেক্টে শুধু দেখতে পারেন — এন্ট্রি করতে মালিককে বলুন", EN: "You can only view this project — ask the owner for entry access"},
+	codeProjectDone:   {BN: "প্রজেক্টটা শেষ হিসেবে রাখা আছে — নতুন এন্ট্রি দিতে মালিক সেটিংস থেকে আবার চালু করবেন", EN: "This project is marked done — the owner can set it going again in settings to add entries"},
 	codeRestoreClosed: {BN: "30 দিন পার হয়ে গেছে — এই প্রজেক্ট আর ফেরানো যাবে না", EN: "More than 30 days have passed — this project can no longer be restored"},
 }
 

@@ -15,6 +15,8 @@ type Membership struct {
 	ProjectID string
 	UserID    string
 	Role      string
+	// Status is the project's: ACTIVE, ON_HOLD or DONE.
+	Status string
 }
 
 // CanWrite reports whether the member may add or change entries. Viewers only read.
@@ -26,20 +28,21 @@ func (s *Service) Member(ctx context.Context, userID, projectID string) (Members
 	if !isID(projectID) {
 		return Membership{}, notFound()
 	}
-	var role string
+	var role, status string
 	err := s.pool.QueryRow(ctx, `
-		SELECT m.role FROM project_members m JOIN projects p ON p.id = m.project_id
-		WHERE m.project_id = $1 AND m.user_id = $2 AND p.deleted_at IS NULL`, projectID, userID).Scan(&role)
+		SELECT m.role, p.status FROM project_members m JOIN projects p ON p.id = m.project_id
+		WHERE m.project_id = $1 AND m.user_id = $2 AND p.deleted_at IS NULL`, projectID, userID).Scan(&role, &status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Membership{}, notFound()
 	}
 	if err != nil {
 		return Membership{}, fmt.Errorf("load membership: %w", err)
 	}
-	return Membership{ProjectID: projectID, UserID: userID, Role: role}, nil
+	return Membership{ProjectID: projectID, UserID: userID, Role: role, Status: status}, nil
 }
 
-// Writer is Member for changes: viewers get forbidden.
+// Writer is Member for changes: viewers get forbidden, and so does everyone on a project
+// marked done until its owner sets it going again in settings.
 func (s *Service) Writer(ctx context.Context, userID, projectID string) (Membership, error) {
 	m, err := s.Member(ctx, userID, projectID)
 	if err != nil {
@@ -47,6 +50,9 @@ func (s *Service) Writer(ctx context.Context, userID, projectID string) (Members
 	}
 	if !m.CanWrite() {
 		return Membership{}, messages.Fail(apperr.KindForbidden, codeReadOnly)
+	}
+	if m.Status == StatusDone {
+		return Membership{}, messages.Fail(apperr.KindForbidden, codeProjectDone)
 	}
 	return m, nil
 }
