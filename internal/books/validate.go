@@ -36,14 +36,18 @@ func (f *fields) amount(path string, n int64, key string) int64 {
 	return n
 }
 
-// date parses YYYY-MM-DD; blank means today.
+// date parses YYYY-MM-DD; blank means today. Money moves on days that have happened, so a
+// later date is refused like in sales, farm and shop books.
 func (f *fields) date(path, s string, today time.Time) time.Time {
 	if strings.TrimSpace(s) == "" {
 		return today
 	}
 	d, err := time.Parse(time.DateOnly, s)
-	if err != nil {
+	switch {
+	case err != nil:
 		f.add(path, "date")
+	case d.After(today):
+		f.add(path, "future")
 	}
 	return d
 }

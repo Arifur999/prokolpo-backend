@@ -248,16 +248,33 @@ func (h *Handler) attendance(w http.ResponseWriter, r *http.Request) {
 	h.reply(w, r, http.StatusOK, map[string]any{"weekStart": start, "today": h.svc.today().Format(time.DateOnly), "teams": teams}, err)
 }
 
+// maxReportYears bounds a report's month list.
+const maxReportYears = 20
+
 func (h *Handler) expenseReport(w http.ResponseWriter, r *http.Request) {
 	c := h.call(r)
+	f := &fields{lang: c.lang}
 	day := func(key string) *time.Time {
-		d, err := time.Parse(time.DateOnly, r.URL.Query().Get(key))
-		if err != nil {
+		raw := r.URL.Query().Get(key)
+		if raw == "" {
+			return nil
+		}
+		d, err := time.Parse(time.DateOnly, raw)
+		if err != nil || d.Year() < 1990 || d.Year() > 2100 {
+			f.add(key, "date")
 			return nil
 		}
 		return &d
 	}
-	report, err := h.svc.ExpenseReport(r.Context(), c.user, c.project, day("from"), day("to"))
+	from, to := day("from"), day("to")
+	if from != nil && to != nil && (from.After(*to) || to.After(from.AddDate(maxReportYears, 0, 0))) {
+		f.add("to", "range")
+	}
+	if err := f.err(); err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	report, err := h.svc.ExpenseReport(r.Context(), c.user, c.project, from, to)
 	h.reply(w, r, http.StatusOK, report, err)
 }
 
@@ -274,6 +291,8 @@ func (h *Handler) saveAttendance(w http.ResponseWriter, r *http.Request) {
 const (
 	defaultPageSize = 10
 	maxPageSize     = 100
+	// maxPage keeps a huge ?page= from overflowing the offset.
+	maxPage = 100_000
 )
 
 func (h *Handler) expenses(w http.ResponseWriter, r *http.Request) {
@@ -288,7 +307,7 @@ func (h *Handler) expenses(w http.ResponseWriter, r *http.Request) {
 	}
 	f.Page, _ = strconv.Atoi(q.Get("page"))
 	f.Limit, _ = strconv.Atoi(q.Get("limit"))
-	f.Page = max(f.Page, 1)
+	f.Page = min(max(f.Page, 1), maxPage)
 	if f.Limit < 1 || f.Limit > maxPageSize {
 		f.Limit = defaultPageSize
 	}

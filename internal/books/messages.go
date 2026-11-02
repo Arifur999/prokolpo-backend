@@ -26,6 +26,8 @@ var fieldMessages = map[string]msg.Text{
 	"amount":          {BN: "টাকার পরিমাণ দিন", EN: "Enter the amount"},
 	"category":        {BN: "খাত বেছে নিন", EN: "Choose a category"},
 	"date":            {BN: "সঠিক তারিখ দিন", EN: "Enter a valid date"},
+	"range":           {BN: "শেষের তারিখ শুরুর তারিখের পরে এবং ২০ বছরের মধ্যে দিন", EN: "Pick an end date after the start, within 20 years"},
+	"future":          {BN: "আজকের পরের তারিখ দেওয়া যায় না", EN: "The date can't be after today"},
 	"party":           {BN: "সাপ্লায়ার বা কন্ট্রাক্টর বেছে নিন", EN: "Choose the supplier or contractor"},
 	"phase":           {BN: "ধাপটা পাওয়া যায়নি", EN: "That phase was not found"},
 	"account":         {BN: "অ্যাকাউন্ট বেছে নিন", EN: "Choose an account"},
