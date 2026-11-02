@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Arifur999/prokolpo-backend/internal/project"
 )
 
 // Receipt is everything a printed partner receipt shows (board ReceiptPartner).
@@ -22,6 +24,7 @@ type Receipt struct {
 	Project     string         `json:"project"`
 	Location    *string        `json:"location"`
 	Company     string         `json:"company"`
+	Print       project.Print  `json:"print"`
 	OwnerPhone  string         `json:"ownerPhone"`
 	CallDate    *string        `json:"callDate"`
 	Reason      *string        `json:"reason"`
@@ -59,8 +62,8 @@ func (s *Service) Receipt(ctx context.Context, userID, projectID, depositID stri
 	var r Receipt
 	err := s.pool.QueryRow(ctx, `
 		SELECT d.id, pr.receipt_prefix || '-' || lpad(d.receipt_no::text, 6, '0'), d.date, d.amount,
-		       p.id, p.name, p.phone, p.share::float8, pr.name, pr.location,
-		       coalesce(o.company_name, o.first_name || ' ' || o.last_name), o.phone,
+		       p.id, p.name, p.phone, p.share::float8, pr.name,
+		       `+project.ReceiptHeadingSQL+`,
 		       to_char(c.date, 'YYYY-MM-DD'), c.reason, c.total,
 		       coalesce(c.total, (SELECT sum(committed) FROM partners WHERE project_id = pr.id))::bigint,
 		       a.name, a.kind, d.note, t.first_name || ' ' || t.last_name,
@@ -77,8 +80,8 @@ func (s *Service) Receipt(ctx context.Context, userID, projectID, depositID stri
 		JOIN money_accounts a ON a.id = d.account_id
 		LEFT JOIN capital_calls c ON c.id = d.call_id
 		WHERE d.id = $1 AND d.project_id = $2`, depositID, projectID).Scan(
-		&r.DepositID, &r.No, &r.Date, &r.Amount, &r.PartnerID, &r.Payer, &r.PayerPhone, &r.Share, &r.Project, &r.Location,
-		&r.Company, &r.OwnerPhone, &r.CallDate, &r.Reason, &r.CallTotal, &r.TotalBase, &r.Account, &r.AccountKind, &r.Note,
+		&r.DepositID, &r.No, &r.Date, &r.Amount, &r.PartnerID, &r.Payer, &r.PayerPhone, &r.Share, &r.Project,
+		&r.Company, &r.Location, &r.OwnerPhone, &r.Print.Lang, &r.Print.Paper, &r.Print.Footer, &r.CallDate, &r.Reason, &r.CallTotal, &r.TotalBase, &r.Account, &r.AccountKind, &r.Note,
 		&r.TakenBy, &r.TakenByRole, &r.WrittenAt, &r.Prints, &r.Should, &r.PaidSoFar)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Receipt{}, notFound()

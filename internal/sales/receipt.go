@@ -7,36 +7,39 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Arifur999/prokolpo-backend/internal/project"
 )
 
 // Receipt is everything a printed sale receipt shows (board Receipt).
 type Receipt struct {
-	PaymentID    string    `json:"paymentId"`
-	SaleID       string    `json:"saleId"`
-	No           string    `json:"no"`
-	Kind         string    `json:"kind"`
-	Date         time.Time `json:"date"`
-	Amount       int64     `json:"amount"`
-	Payer        string    `json:"payer"`
-	PayerPhone   string    `json:"payerPhone"`
-	Unit         string    `json:"unit"`
-	UnitType     string    `json:"unitType"`
-	Floor        int       `json:"floor"`
-	Size         *int      `json:"size"`
-	Project      string    `json:"project"`
-	Location     *string   `json:"location"`
-	Company      string    `json:"company"`
-	OwnerPhone   string    `json:"ownerPhone"`
-	Account      string    `json:"account"`
-	AccountKind  string    `json:"accountKind"`
-	Note         *string   `json:"note"`
-	TakenBy      string    `json:"takenBy"`
-	TakenByRole  *string   `json:"takenByRole"`
-	WrittenAt    time.Time `json:"writtenAt"`
-	Prints       int       `json:"prints"`
-	Price        int64     `json:"price"`
-	PaidSoFar    int64     `json:"paidSoFar"`
-	Installments int       `json:"installments"`
+	PaymentID    string        `json:"paymentId"`
+	SaleID       string        `json:"saleId"`
+	No           string        `json:"no"`
+	Kind         string        `json:"kind"`
+	Date         time.Time     `json:"date"`
+	Amount       int64         `json:"amount"`
+	Payer        string        `json:"payer"`
+	PayerPhone   string        `json:"payerPhone"`
+	Unit         string        `json:"unit"`
+	UnitType     string        `json:"unitType"`
+	Floor        int           `json:"floor"`
+	Size         *int          `json:"size"`
+	Project      string        `json:"project"`
+	Location     *string       `json:"location"`
+	Company      string        `json:"company"`
+	Print        project.Print `json:"print"`
+	OwnerPhone   string        `json:"ownerPhone"`
+	Account      string        `json:"account"`
+	AccountKind  string        `json:"accountKind"`
+	Note         *string       `json:"note"`
+	TakenBy      string        `json:"takenBy"`
+	TakenByRole  *string       `json:"takenByRole"`
+	WrittenAt    time.Time     `json:"writtenAt"`
+	Prints       int           `json:"prints"`
+	Price        int64         `json:"price"`
+	PaidSoFar    int64         `json:"paidSoFar"`
+	Installments int           `json:"installments"`
 	// Covered are the installments this payment went toward; Next is what came due after it.
 	Covered []Row   `json:"covered"`
 	Next    *RowDue `json:"next"`
@@ -64,8 +67,8 @@ func (s *Service) Receipt(ctx context.Context, userID, projectID, paymentID stri
 	var receiptNo int
 	err := s.pool.QueryRow(ctx, `
 		SELECT p.id, p.sale_id, pr.receipt_prefix || '-' || lpad(p.receipt_no::text, 6, '0'), p.receipt_no, p.kind, p.date, p.amount,
-		       c.name, c.phone, u.name, u.type, u.floor, u.size, pr.name, pr.location,
-		       coalesce(o.company_name, o.first_name || ' ' || o.last_name), o.phone, a.name, a.kind, p.note,
+		       c.name, c.phone, u.name, u.type, u.floor, u.size, pr.name,
+		       `+project.ReceiptHeadingSQL+`, a.name, a.kind, p.note,
 		       t.first_name || ' ' || t.last_name, (SELECT m.role FROM project_members m WHERE m.project_id = pr.id AND m.user_id = t.id),
 		       p.created_at, p.prints, sl.price, sl.installments
 		FROM sale_payments p
@@ -78,7 +81,7 @@ func (s *Service) Receipt(ctx context.Context, userID, projectID, paymentID stri
 		JOIN money_accounts a ON a.id = p.account_id
 		WHERE p.id = $1 AND p.project_id = $2`, paymentID, projectID).Scan(
 		&r.PaymentID, &r.SaleID, &r.No, &receiptNo, &r.Kind, &r.Date, &r.Amount, &r.Payer, &r.PayerPhone, &r.Unit, &r.UnitType, &r.Floor, &r.Size,
-		&r.Project, &r.Location, &r.Company, &r.OwnerPhone, &r.Account, &r.AccountKind, &r.Note, &r.TakenBy, &r.TakenByRole,
+		&r.Project, &r.Company, &r.Location, &r.OwnerPhone, &r.Print.Lang, &r.Print.Paper, &r.Print.Footer, &r.Account, &r.AccountKind, &r.Note, &r.TakenBy, &r.TakenByRole,
 		&r.WrittenAt, &r.Prints, &r.Price, &r.Installments)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Receipt{}, notFound()
