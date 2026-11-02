@@ -16,7 +16,7 @@ var accountKinds = []string{"CASH", "BANK", "MOBILE"}
 
 // movementsCTE is every movement of money through a project's accounts ($1 is the
 // project): starting balances, payments out, partner deposits in, and both legs of each
-// transfer, money customers paid for units, and what farm buyers paid.
+// transfer, money customers paid for units, what farm buyers paid, and a shop's daily takings.
 const movementsCTE = `
 WITH movements AS (
 	SELECT a.id::text AS ref, 'OPENING' AS kind, a.id AS account_id, (a.created_at AT TIME ZONE 'Asia/Dhaka')::date AS date,
@@ -41,6 +41,15 @@ WITH movements AS (
 	UNION ALL
 	SELECT r.id::text, 'PRODUCE', r.account_id, r.date, r.created_at, r.amount, b.name, NULL, NULL, NULL
 	FROM produce_receipts r JOIN produce_buyers b ON b.id = r.buyer_id WHERE r.project_id = $1
+	UNION ALL
+	SELECT d.id::text, 'SHOP_CASH', d.cash_account_id, d.date, d.created_at, d.cash + d.other, NULL, NULL, d.note, NULL
+	FROM shop_days d WHERE d.project_id = $1 AND d.cash + d.other > 0
+	UNION ALL
+	SELECT d.id::text || '-m', 'SHOP_MOBILE', d.mobile_account_id, d.date, d.created_at, d.mobile, NULL, NULL, NULL, NULL
+	FROM shop_days d WHERE d.project_id = $1 AND d.mobile > 0
+	UNION ALL
+	SELECT k.id::text, 'KHATA', k.account_id, k.date, k.created_at, k.amount, p.name, NULL, NULL, NULL
+	FROM khata_entries k JOIN khata_people p ON p.id = k.person_id WHERE k.project_id = $1 AND k.kind = 'PAYMENT'
 	UNION ALL
 	SELECT t.id::text, 'TRANSFER_OUT', t.from_account_id, t.date, t.created_at, -t.amount, NULL, NULL, t.note, b.name
 	FROM transfers t JOIN money_accounts b ON b.id = t.to_account_id WHERE t.project_id = $1
