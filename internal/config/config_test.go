@@ -11,8 +11,10 @@ func envOf(vars map[string]string) func(string) string {
 	return func(key string) string { return vars[key] }
 }
 
+const testSecret = "0123456789abcdef0123456789abcdef"
+
 func TestLoadDefaults(t *testing.T) {
-	cfg, err := Load(envOf(map[string]string{"DATABASE_URL": "postgres://localhost/prokolpo"}))
+	cfg, err := Load(envOf(map[string]string{"DATABASE_URL": "postgres://localhost/prokolpo", "JWT_SECRET": testSecret}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -32,6 +34,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.ShutdownTimeout != 15*time.Second {
 		t.Errorf("ShutdownTimeout = %s, want 15s", cfg.ShutdownTimeout)
 	}
+	if cfg.AccessTokenTTL != 15*time.Minute || cfg.AppURL != "http://localhost:3000" || cfg.SMTP.Port != "587" {
+		t.Errorf("auth defaults not applied: ttl %s, app url %q, smtp port %q", cfg.AccessTokenTTL, cfg.AppURL, cfg.SMTP.Port)
+	}
 }
 
 func TestLoadOverrides(t *testing.T) {
@@ -42,6 +47,10 @@ func TestLoadOverrides(t *testing.T) {
 		"DB_MAX_CONNS":     "25",
 		"LOG_LEVEL":        "warn",
 		"SHUTDOWN_TIMEOUT": "30s",
+		"JWT_SECRET":       testSecret,
+		"ACCESS_TOKEN_TTL": "10m",
+		"APP_URL":          "https://prokolpo.app",
+		"SMTP_HOST":        "smtp.example.com",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -61,14 +70,24 @@ func TestLoadReportsEveryProblem(t *testing.T) {
 		"DB_MAX_CONNS":     "0",
 		"LOG_LEVEL":        "loud",
 		"SHUTDOWN_TIMEOUT": "-1s",
+		"JWT_SECRET":       "short",
+		"ACCESS_TOKEN_TTL": "5h",
+		"APP_URL":          "prokolpo.app",
 	}))
 	if err == nil {
 		t.Fatal("Load: want an error, got nil")
 	}
 
-	for _, want := range []string{"APP_ENV", "DATABASE_URL", "DB_MAX_CONNS", "LOG_LEVEL", "SHUTDOWN_TIMEOUT"} {
+	for _, want := range []string{"APP_ENV", "DATABASE_URL", "DB_MAX_CONNS", "LOG_LEVEL", "SHUTDOWN_TIMEOUT", "JWT_SECRET", "ACCESS_TOKEN_TTL", "APP_URL"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q does not mention %s", err, want)
 		}
+	}
+}
+
+func TestLoadRequiresSMTPInProduction(t *testing.T) {
+	_, err := Load(envOf(map[string]string{"APP_ENV": "production", "DATABASE_URL": "postgres://db/p", "JWT_SECRET": testSecret}))
+	if err == nil || !strings.Contains(err.Error(), "SMTP_HOST") {
+		t.Fatalf("Load err = %v, want it to require SMTP_HOST", err)
 	}
 }

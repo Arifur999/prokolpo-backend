@@ -34,6 +34,7 @@ services:
       APP_ENV: development
       DATABASE_URL: postgres://prokolpo:prokolpo@db:5432/prokolpo?sslmode=disable
       LOG_LEVEL: debug
+      JWT_SECRET: local-development-secret-not-for-production
     ports:
       - "5000:5000"
     depends_on:
