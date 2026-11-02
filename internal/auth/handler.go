@@ -36,7 +36,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 }
 
 func (h *Handler) fail(w http.ResponseWriter, r *http.Request, err error) {
-	h.responder.Error(w, r, localize(err, httpx.Lang(r)))
+	h.responder.Error(w, r, messages.Localize(err, httpx.Lang(r)))
 }
 
 func (h *Handler) registration(w http.ResponseWriter, r *http.Request) {
@@ -200,10 +200,10 @@ func (h *Handler) required(r *http.Request, pairs ...string) error {
 	var fields []apperr.FieldError
 	for i := 0; i+1 < len(pairs); i += 2 {
 		if strings.TrimSpace(pairs[i+1]) == "" {
-			fields = append(fields, apperr.FieldError{Path: pairs[i], Message: fieldMessages["required"].in(lang)})
+			fields = append(fields, apperr.FieldError{Path: pairs[i], Message: fieldMessages["required"].In(lang)})
 		}
 	}
-	return fail(apperr.KindInvalid, codeInvalidInput, fields...)
+	return messages.Fail(apperr.KindInvalid, codeInvalidInput, fields...)
 }
 
 func welcome(lang string) string {

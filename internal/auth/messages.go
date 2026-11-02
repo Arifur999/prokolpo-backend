@@ -1,9 +1,6 @@
 package auth
 
-import (
-	"github.com/Arifur999/prokolpo-backend/internal/apperr"
-	"github.com/Arifur999/prokolpo-backend/internal/httpx"
-)
+import "github.com/Arifur999/prokolpo-backend/internal/msg"
 
 // Error codes the frontend can branch on. The Bangla text is the design's copy.
 const (
@@ -24,65 +21,36 @@ const (
 	codeResetLinkUsed      = "RESET_LINK_USED"
 )
 
-type text struct{ bn, en string }
-
-var messages = map[string]text{
-	codeInvalidInput:       {"কিছু তথ্য ঠিক নেই — লাল চিহ্ন দেওয়া ঘরগুলো দেখুন", "Some details need fixing — check the highlighted fields"},
-	codePhoneTaken:         {"এই নম্বর দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে", "An account already uses this mobile number"},
-	codeEmailTaken:         {"এই ইমেইল আগেই ব্যবহার হয়েছে", "This email is already in use"},
-	codeRegistrationClosed: {"কিছুদিনের জন্য নতুন রেজিস্ট্রেশন বন্ধ", "New registrations are paused for now"},
-	codeInvalidCredentials: {"মোবাইল নম্বর/ইমেইল বা পাসওয়ার্ড মেলেনি", "Mobile number/email or password is incorrect"},
-	codeAccountSuspended:   {"আপনার অ্যাকাউন্ট সাময়িকভাবে বন্ধ আছে — সাপোর্টে যোগাযোগ করুন", "Your account is temporarily suspended — please contact support"},
-	codeTooManyAttempts:    {"অনেকবার ভুল হয়েছে — 15 মিনিট পরে আবার চেষ্টা করুন", "Too many attempts — try again in 15 minutes"},
-	codeSessionInvalid:     {"লগইনের মেয়াদ শেষ — আবার লগইন করুন", "Your session has ended — please log in again"},
-	codeUnauthorized:       {"আগে লগইন করুন", "Please log in first"},
-	codeAccountNotFound:    {"এই নম্বরে কোনো অ্যাকাউন্ট নেই — নতুন অ্যাকাউন্ট খুলতে পারেন", "No account uses this number — you can create one"},
-	codeNoEmail:            {"আপনার অ্যাকাউন্টে কোনো ইমেইল দেওয়া নেই", "Your account has no email address"},
-	codeResetThrottled:     {"1 মিনিট পর আবার পাঠাতে পারবেন", "You can send another link in a minute"},
-	codeResetLinkInvalid:   {"এই লিংক আর কাজ করবে না — নতুন লিংক নিন", "This link no longer works — request a new one"},
-	codeResetLinkExpired:   {"লিংকের মেয়াদ শেষ", "This link has expired"},
-	codeResetLinkUsed:      {"এই লিংক আগেই ব্যবহার হয়েছে", "This link was already used"},
+var messages = msg.Catalog{
+	codeInvalidInput:       {BN: "কিছু তথ্য ঠিক নেই — লাল চিহ্ন দেওয়া ঘরগুলো দেখুন", EN: "Some details need fixing — check the highlighted fields"},
+	codePhoneTaken:         {BN: "এই নম্বর দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে", EN: "An account already uses this mobile number"},
+	codeEmailTaken:         {BN: "এই ইমেইল আগেই ব্যবহার হয়েছে", EN: "This email is already in use"},
+	codeRegistrationClosed: {BN: "কিছুদিনের জন্য নতুন রেজিস্ট্রেশন বন্ধ", EN: "New registrations are paused for now"},
+	codeInvalidCredentials: {BN: "মোবাইল নম্বর/ইমেইল বা পাসওয়ার্ড মেলেনি", EN: "Mobile number/email or password is incorrect"},
+	codeAccountSuspended:   {BN: "আপনার অ্যাকাউন্ট সাময়িকভাবে বন্ধ আছে — সাপোর্টে যোগাযোগ করুন", EN: "Your account is temporarily suspended — please contact support"},
+	codeTooManyAttempts:    {BN: "অনেকবার ভুল হয়েছে — 15 মিনিট পরে আবার চেষ্টা করুন", EN: "Too many attempts — try again in 15 minutes"},
+	codeSessionInvalid:     {BN: "লগইনের মেয়াদ শেষ — আবার লগইন করুন", EN: "Your session has ended — please log in again"},
+	codeUnauthorized:       {BN: "আগে লগইন করুন", EN: "Please log in first"},
+	codeAccountNotFound:    {BN: "এই নম্বরে কোনো অ্যাকাউন্ট নেই — নতুন অ্যাকাউন্ট খুলতে পারেন", EN: "No account uses this number — you can create one"},
+	codeNoEmail:            {BN: "আপনার অ্যাকাউন্টে কোনো ইমেইল দেওয়া নেই", EN: "Your account has no email address"},
+	codeResetThrottled:     {BN: "1 মিনিট পর আবার পাঠাতে পারবেন", EN: "You can send another link in a minute"},
+	codeResetLinkInvalid:   {BN: "এই লিংক আর কাজ করবে না — নতুন লিংক নিন", EN: "This link no longer works — request a new one"},
+	codeResetLinkExpired:   {BN: "লিংকের মেয়াদ শেষ", EN: "This link has expired"},
+	codeResetLinkUsed:      {BN: "এই লিংক আগেই ব্যবহার হয়েছে", EN: "This link was already used"},
 }
 
 // Field messages for registration and reset validation.
-var fieldMessages = map[string]text{
-	"companyShort": {"কোম্পানির নাম কমপক্ষে ২ অক্ষরের হতে হবে", "Company name must be at least 2 characters"},
-	"companyLong":  {"কোম্পানির নাম ৮০ অক্ষরের বেশি হতে পারবে না", "Company name can't be longer than 80 characters"},
-	"firstLong":    {"প্রথম নাম ৩০ অক্ষরের বেশি হতে পারবে না", "First name can't be longer than 30 characters"},
-	"lastLong":     {"শেষ নাম ৩০ অক্ষরের বেশি হতে পারবে না", "Last name can't be longer than 30 characters"},
-	"firstMissing": {"প্রথম নাম দিন", "Enter your first name"},
-	"firstShort":   {"প্রথম নাম কমপক্ষে ২ অক্ষরের হতে হবে", "First name must be at least 2 characters"},
-	"lastMissing":  {"শেষ নাম দিন", "Enter your last name"},
-	"emailBad":     {"সঠিক ইমেইল দিন", "Enter a valid email"},
-	"phoneBad":     {"সঠিক মোবাইল নম্বর দিন (যেমন 01712345678)", "Enter a valid mobile number (e.g. 01712345678)"},
-	"passwordWeak": {"পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের এবং অক্ষর ও সংখ্যা মিলিয়ে হতে হবে", "Password must be at least 8 characters with letters and numbers"},
-	"termsMissing": {"শর্তাবলীতে সম্মতি দিন", "Please accept the terms"},
-	"required":     {"এই ঘরটা পূরণ করুন", "This field is required"},
-}
-
-func (t text) in(lang string) string {
-	if lang == httpx.LangEnglish {
-		return t.en
-	}
-	return t.bn
-}
-
-// fail builds a coded error whose message is filled in per request language by localize.
-func fail(kind apperr.Kind, code string, fields ...apperr.FieldError) error {
-	return &apperr.Error{Kind: kind, Code: code, Message: messages[code].en, Fields: fields}
-}
-
-// localize swaps a coded error's message for the request's language.
-func localize(err error, lang string) error {
-	e, ok := apperr.As(err)
-	if !ok || e.Code == "" {
-		return err
-	}
-	msg, ok := messages[e.Code]
-	if !ok {
-		return err
-	}
-	out := *e
-	out.Message = msg.in(lang)
-	return &out
+var fieldMessages = map[string]msg.Text{
+	"companyShort": {BN: "কোম্পানির নাম কমপক্ষে ২ অক্ষরের হতে হবে", EN: "Company name must be at least 2 characters"},
+	"companyLong":  {BN: "কোম্পানির নাম ৮০ অক্ষরের বেশি হতে পারবে না", EN: "Company name can't be longer than 80 characters"},
+	"firstLong":    {BN: "প্রথম নাম ৩০ অক্ষরের বেশি হতে পারবে না", EN: "First name can't be longer than 30 characters"},
+	"lastLong":     {BN: "শেষ নাম ৩০ অক্ষরের বেশি হতে পারবে না", EN: "Last name can't be longer than 30 characters"},
+	"firstMissing": {BN: "প্রথম নাম দিন", EN: "Enter your first name"},
+	"firstShort":   {BN: "প্রথম নাম কমপক্ষে ২ অক্ষরের হতে হবে", EN: "First name must be at least 2 characters"},
+	"lastMissing":  {BN: "শেষ নাম দিন", EN: "Enter your last name"},
+	"emailBad":     {BN: "সঠিক ইমেইল দিন", EN: "Enter a valid email"},
+	"phoneBad":     {BN: "সঠিক মোবাইল নম্বর দিন (যেমন 01712345678)", EN: "Enter a valid mobile number (e.g. 01712345678)"},
+	"passwordWeak": {BN: "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের এবং অক্ষর ও সংখ্যা মিলিয়ে হতে হবে", EN: "Password must be at least 8 characters with letters and numbers"},
+	"termsMissing": {BN: "শর্তাবলীতে সম্মতি দিন", EN: "Please accept the terms"},
+	"required":     {BN: "এই ঘরটা পূরণ করুন", EN: "This field is required"},
 }

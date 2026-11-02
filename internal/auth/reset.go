@@ -50,10 +50,10 @@ func (s *Service) SendResetLink(ctx context.Context, rawPhone, lang string) erro
 		return err
 	}
 	if user.Email == nil {
-		return fail(apperr.KindInvalid, codeNoEmail)
+		return messages.Fail(apperr.KindInvalid, codeNoEmail)
 	}
 	if !s.resetSends.Allow(user.ID) {
-		return fail(apperr.KindTooManyRequests, codeResetThrottled)
+		return messages.Fail(apperr.KindTooManyRequests, codeResetThrottled)
 	}
 
 	raw, hash := token.NewOpaque()
@@ -83,7 +83,7 @@ type ResetLinkInfo struct {
 func (s *Service) CheckResetLink(ctx context.Context, raw string) (ResetLinkInfo, error) {
 	link, err := resetLinkByHash(ctx, s.pool, token.Hash(raw), false)
 	if errors.Is(err, errNotFound) {
-		return ResetLinkInfo{}, fail(apperr.KindInvalid, codeResetLinkInvalid)
+		return ResetLinkInfo{}, messages.Fail(apperr.KindInvalid, codeResetLinkInvalid)
 	}
 	if err != nil {
 		return ResetLinkInfo{}, fmt.Errorf("find reset link: %w", err)
@@ -103,11 +103,11 @@ func (s *Service) CheckResetLink(ctx context.Context, raw string) (ResetLinkInfo
 func (l resetLinkRow) unusable() error {
 	switch {
 	case l.UsedAt != nil:
-		return fail(apperr.KindInvalid, codeResetLinkUsed)
+		return messages.Fail(apperr.KindInvalid, codeResetLinkUsed)
 	case l.VoidedAt != nil:
-		return fail(apperr.KindInvalid, codeResetLinkInvalid)
+		return messages.Fail(apperr.KindInvalid, codeResetLinkInvalid)
 	case !time.Now().Before(l.ExpiresAt):
-		return fail(apperr.KindInvalid, codeResetLinkExpired)
+		return messages.Fail(apperr.KindInvalid, codeResetLinkExpired)
 	default:
 		return nil
 	}
@@ -116,7 +116,7 @@ func (l resetLinkRow) unusable() error {
 // ResetPassword sets a new password from a link and signs the account out everywhere.
 func (s *Service) ResetPassword(ctx context.Context, raw, newPassword, lang string) error {
 	if password.Validate(newPassword) != nil {
-		return fail(apperr.KindInvalid, codeInvalidInput, apperr.FieldError{Path: "password", Message: fieldMessages["passwordWeak"].in(lang)})
+		return messages.Fail(apperr.KindInvalid, codeInvalidInput, apperr.FieldError{Path: "password", Message: fieldMessages["passwordWeak"].In(lang)})
 	}
 	hash, err := password.Hash(newPassword)
 	if err != nil {
@@ -125,7 +125,7 @@ func (s *Service) ResetPassword(ctx context.Context, raw, newPassword, lang stri
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		link, txErr := resetLinkByHash(ctx, tx, token.Hash(raw), true)
 		if errors.Is(txErr, errNotFound) {
-			return fail(apperr.KindInvalid, codeResetLinkInvalid)
+			return messages.Fail(apperr.KindInvalid, codeResetLinkInvalid)
 		}
 		if txErr != nil {
 			return txErr
@@ -161,11 +161,11 @@ func applyReset(ctx context.Context, tx pgx.Tx, linkID, userID, hash string) err
 func (s *Service) userForReset(ctx context.Context, rawPhone, lang string) (User, error) {
 	p, err := phone.Normalize(rawPhone)
 	if err != nil {
-		return User{}, fail(apperr.KindInvalid, codeInvalidInput, apperr.FieldError{Path: "phone", Message: fieldMessages["phoneBad"].in(lang)})
+		return User{}, messages.Fail(apperr.KindInvalid, codeInvalidInput, apperr.FieldError{Path: "phone", Message: fieldMessages["phoneBad"].In(lang)})
 	}
 	user, err := userByPhone(ctx, s.pool, p)
 	if errors.Is(err, errNotFound) {
-		return User{}, fail(apperr.KindNotFound, codeAccountNotFound)
+		return User{}, messages.Fail(apperr.KindNotFound, codeAccountNotFound)
 	}
 	if err != nil {
 		return User{}, fmt.Errorf("find user: %w", err)

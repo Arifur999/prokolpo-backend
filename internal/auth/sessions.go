@@ -62,7 +62,7 @@ func (s *Service) Refresh(ctx context.Context, raw string, meta ClientMeta) (Ses
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		row, err := refreshForUpdate(ctx, tx, token.Hash(raw))
 		if errors.Is(err, errNotFound) {
-			revokedReason = fail(apperr.KindUnauthorized, codeSessionInvalid)
+			revokedReason = messages.Fail(apperr.KindUnauthorized, codeSessionInvalid)
 			return nil
 		}
 		if err != nil {
@@ -70,10 +70,10 @@ func (s *Service) Refresh(ctx context.Context, raw string, meta ClientMeta) (Ses
 		}
 		switch {
 		case row.RevokedAt != nil, time.Now().After(row.ExpiresAt):
-			revokedReason = fail(apperr.KindUnauthorized, codeSessionInvalid)
+			revokedReason = messages.Fail(apperr.KindUnauthorized, codeSessionInvalid)
 			return nil
 		case row.RotatedAt != nil:
-			revokedReason = fail(apperr.KindUnauthorized, codeSessionInvalid)
+			revokedReason = messages.Fail(apperr.KindUnauthorized, codeSessionInvalid)
 			if time.Since(*row.RotatedAt) <= reuseGrace {
 				return nil
 			}
@@ -86,7 +86,7 @@ func (s *Service) Refresh(ctx context.Context, raw string, meta ClientMeta) (Ses
 			return err
 		}
 		if user.IsSuspended() {
-			revokedReason = fail(apperr.KindForbidden, codeAccountSuspended)
+			revokedReason = messages.Fail(apperr.KindForbidden, codeAccountSuspended)
 			return revokeFamily(ctx, tx, row.FamilyID)
 		}
 		if rotErr := markRotated(ctx, tx, row.ID); rotErr != nil {

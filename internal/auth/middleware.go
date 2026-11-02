@@ -25,12 +25,12 @@ func RequireUser(issuer *token.Issuer, responder *httpx.Responder) func(http.Han
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 			if !ok {
-				responder.Error(w, r, localize(fail(apperr.KindUnauthorized, codeUnauthorized), httpx.Lang(r)))
+				responder.Error(w, r, messages.Localize(messages.Fail(apperr.KindUnauthorized, codeUnauthorized), httpx.Lang(r)))
 				return
 			}
 			claims, err := issuer.Parse(raw)
 			if err != nil {
-				responder.Error(w, r, localize(fail(apperr.KindUnauthorized, codeUnauthorized), httpx.Lang(r)))
+				responder.Error(w, r, messages.Localize(messages.Fail(apperr.KindUnauthorized, codeUnauthorized), httpx.Lang(r)))
 				return
 			}
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), claimsKey{}, claims)))

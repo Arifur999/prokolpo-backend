@@ -42,7 +42,7 @@ type registerRequest struct {
 func (req registerRequest) validate(lang string) (RegisterInput, error) {
 	var fields []apperr.FieldError
 	add := func(path, key string) {
-		fields = append(fields, apperr.FieldError{Path: path, Message: fieldMessages[key].in(lang)})
+		fields = append(fields, apperr.FieldError{Path: path, Message: fieldMessages[key].In(lang)})
 	}
 
 	in := RegisterInput{
@@ -93,7 +93,7 @@ func (req registerRequest) validate(lang string) (RegisterInput, error) {
 		add("acceptTerms", "termsMissing")
 	}
 	if len(fields) > 0 {
-		return RegisterInput{}, fail(apperr.KindInvalid, codeInvalidInput, fields...)
+		return RegisterInput{}, messages.Fail(apperr.KindInvalid, codeInvalidInput, fields...)
 	}
 	return in, nil
 }

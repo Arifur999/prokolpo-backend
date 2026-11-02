@@ -84,7 +84,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, meta ClientMet
 	// Invite-only needs project invitations, which arrive with the members
 	// feature; until then it behaves like closed.
 	if mode != modeOpen {
-		return Session{}, fail(apperr.KindForbidden, codeRegistrationClosed)
+		return Session{}, messages.Fail(apperr.KindForbidden, codeRegistrationClosed)
 	}
 
 	phoneTaken, emailTaken, err := phoneOrEmailTaken(ctx, s.pool, in.Phone, in.Email)
@@ -125,16 +125,16 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, meta ClientMet
 func duplicateError(phoneTaken, emailTaken bool, lang string) error {
 	var fields []apperr.FieldError
 	if phoneTaken {
-		fields = append(fields, apperr.FieldError{Path: "phone", Message: messages[codePhoneTaken].in(lang)})
+		fields = append(fields, apperr.FieldError{Path: "phone", Message: messages[codePhoneTaken].In(lang)})
 	}
 	if emailTaken {
-		fields = append(fields, apperr.FieldError{Path: "email", Message: messages[codeEmailTaken].in(lang)})
+		fields = append(fields, apperr.FieldError{Path: "email", Message: messages[codeEmailTaken].In(lang)})
 	}
 	switch {
 	case phoneTaken:
-		return fail(apperr.KindConflict, codePhoneTaken, fields...)
+		return messages.Fail(apperr.KindConflict, codePhoneTaken, fields...)
 	case emailTaken:
-		return fail(apperr.KindConflict, codeEmailTaken, fields...)
+		return messages.Fail(apperr.KindConflict, codeEmailTaken, fields...)
 	default:
 		return nil
 	}
@@ -144,10 +144,10 @@ func duplicateError(phoneTaken, emailTaken bool, lang string) error {
 func (s *Service) Login(ctx context.Context, rawID, pw string, remember bool, meta ClientMeta) (Session, error) {
 	id, ok := parseIdentifier(rawID)
 	if !ok {
-		return Session{}, fail(apperr.KindUnauthorized, codeInvalidCredentials)
+		return Session{}, messages.Fail(apperr.KindUnauthorized, codeInvalidCredentials)
 	}
 	if s.loginFailures.Exceeded(id.key()) {
-		return Session{}, fail(apperr.KindTooManyRequests, codeTooManyAttempts)
+		return Session{}, messages.Fail(apperr.KindTooManyRequests, codeTooManyAttempts)
 	}
 
 	user, err := s.findByIdentifier(ctx, id)
@@ -164,11 +164,11 @@ func (s *Service) Login(ctx context.Context, rawID, pw string, remember bool, me
 	}
 	if err != nil || !match {
 		s.loginFailures.Hit(id.key())
-		return Session{}, fail(apperr.KindUnauthorized, codeInvalidCredentials)
+		return Session{}, messages.Fail(apperr.KindUnauthorized, codeInvalidCredentials)
 	}
 	// Only after the right password, so suspension does not reveal which numbers have accounts.
 	if user.IsSuspended() {
-		return Session{}, fail(apperr.KindForbidden, codeAccountSuspended)
+		return Session{}, messages.Fail(apperr.KindForbidden, codeAccountSuspended)
 	}
 	s.loginFailures.Reset(id.key())
 
@@ -198,13 +198,13 @@ func (s *Service) findByIdentifier(ctx context.Context, id identifier) (User, er
 func (s *Service) Me(ctx context.Context, userID string) (UserView, error) {
 	user, err := userByID(ctx, s.pool, userID)
 	if errors.Is(err, errNotFound) {
-		return UserView{}, fail(apperr.KindUnauthorized, codeUnauthorized)
+		return UserView{}, messages.Fail(apperr.KindUnauthorized, codeUnauthorized)
 	}
 	if err != nil {
 		return UserView{}, fmt.Errorf("load user: %w", err)
 	}
 	if user.IsSuspended() {
-		return UserView{}, fail(apperr.KindForbidden, codeAccountSuspended)
+		return UserView{}, messages.Fail(apperr.KindForbidden, codeAccountSuspended)
 	}
 	return user.view(), nil
 }
