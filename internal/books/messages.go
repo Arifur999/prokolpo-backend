@@ -38,6 +38,7 @@ var fieldMessages = map[string]msg.Text{
 	"supplierTaken":   {BN: "এই নামে আগেই একজন সাপ্লায়ার আছে", EN: "A supplier with this name already exists"},
 	"phone":           {BN: "সঠিক মোবাইল নম্বর দিন (যেমন 01712345678)", EN: "Enter a valid mobile number (e.g. 01712345678)"},
 	"contractorName":  {BN: "নাম দিন", EN: "Enter a name"},
+	"categoryTaken":   {BN: "এই নামে খাত আগেই আছে", EN: "A head with this name already exists"},
 	"contractorTaken": {BN: "এই নামে আগেই একজন আছে", EN: "Someone with this name already exists"},
 	"contract":        {BN: "চুক্তির টাকা দিন", EN: "Enter the contract amount"},
 	"wage":            {BN: "দৈনিক মজুরি দিন", EN: "Enter the daily wage"},
