@@ -44,6 +44,7 @@ production image build.
 | `internal/database` | PostgreSQL pool |
 | `internal/health` | `GET /api/v1/health` |
 | `internal/auth` | registration, login, rotating sessions, password reset |
+| `internal/project` | projects, their starting books, membership checks, delete and restore |
 | `internal/token`, `internal/password`, `internal/phone` | access/opaque tokens, argon2id, BD mobile numbers |
 | `internal/ratelimit`, `internal/mail` | in-memory limits (single instance), SMTP and log mailers |
 | `internal/testdb` | migrated, emptied database for integration tests (name must end in `_test`) |
@@ -96,10 +97,29 @@ carry a stable `code` (`ACCOUNT_SUSPENDED`, `RESET_LINK_INVALID`, ...). Messages
 A session is `{ user, accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt }`. Access tokens are
 15-minute HS256 JWTs (`sub`, `role`: `user` or `staff`); refresh tokens are opaque and stored hashed.
 
+## Projects
+
+All routes need `Authorization: Bearer <accessToken>`. A project someone is not a member of answers 404.
+
+| Endpoint | Body | Notes |
+| --- | --- | --- |
+| `GET /projects` | | the caller's projects with their `role` and `memberCount` |
+| `POST /projects` | `name, kind, ownership, startDate, location?, description?, budget?` + kind details, `categories[]`, `phases[]` | 201; adds the owner, expense heads, phases and a cash account |
+| `GET /projects/{id}` | | the project with its phases |
+| `DELETE /projects/{id}` | | owner only; restorable for 30 days |
+| `GET /projects/deleted` | | the owner's restorable projects with `purgeAt` |
+| `POST /projects/{id}/restore` | | owner only, within 30 days |
+
+`kind` is `BUILDING`, `FARM` (needs `farmType`), `LAND`, `BUSINESS`, `RENOVATION` or `OTHER`; `ownership` is `PERSONAL`
+or `PARTNERSHIP` and cannot change later. Kind details (`floors`, `batches`, `plots`, `landArea`, `landUnit`,
+`businessType`) are kept only for their kind. Categories and phases come worded by the client, in the creator's
+language, exactly as its preview showed them.
+
 ## Database
 
 - Ids are `uuid` with PostgreSQL 18's built-in `uuidv7()` default (time-ordered).
-- Instants are `timestamptz`; money is `numeric(14, 2)`.
+- Instants are `timestamptz`; money is whole taka in `bigint` (`int64` in Go, a plain number in JSON). The books
+  never deal in paisa.
 - Every tenant-owned table carries its tenant key and an index that leads with it.
 - Tables with `updated_at` use the shared `set_updated_at()` trigger.
 - Migrations are additive; destructive changes go expand, backfill, switch, contract across releases.
