@@ -1,0 +1,14 @@
+# build output
+/bin/
+cover.out
+
+# local env (only .env.example is tracked)
+.env
+.env.*
+!.env.example
+
+# editors and OS
+.idea/
+.vscode/
+.DS_Store
+*.log

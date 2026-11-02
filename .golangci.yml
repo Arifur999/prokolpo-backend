@@ -1,0 +1,150 @@
+# golangci-lint v2 configuration. Copy to the project root as .golangci.yml.
+# Requires golangci-lint v2.6+ (for the modernize linter). Check with:
+#   golangci-lint config verify
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    # correctness
+    - govet
+    - staticcheck
+    - errcheck
+    - errorlint        # errors.Is/As instead of == and type assertions
+    - nilerr           # returning nil when err != nil
+    - forcetypeassert  # unchecked type assertions
+    - ineffassign
+    - unused
+    - wastedassign
+    - durationcheck
+    - copyloopvar      # pointless loop-var copies (Go 1.22+)
+    - exhaustive       # missing enum cases in switch
+    - recvcheck        # mixed value/pointer receivers
+    - predeclared      # shadowing len, new, error, ...
+    # resources and context
+    - bodyclose
+    - rowserrcheck
+    - sqlclosecheck
+    - noctx            # HTTP/SQL calls without context
+    - containedctx     # context stored in structs
+    - fatcontext       # context growing inside loops
+    # security
+    - gosec
+    # style and API quality
+    - revive
+    - gocritic
+    - errname          # ErrFoo / FooError naming
+    - misspell
+    - unconvert
+    - usestdlibvars    # http.MethodGet, http.StatusOK
+    - intrange         # for i := range n
+    - modernize        # newer stdlib idioms allowed by go.mod
+    - perfsprint       # fmt.Sprintf where strconv/errors.New would do
+    - sloglint
+    # complexity
+    - gocyclo
+    - nestif
+    # tests
+    - thelper
+    - usetesting       # t.TempDir, t.Context, t.Setenv
+    # hygiene
+    - nolintlint
+
+  settings:
+    errcheck:
+      check-type-assertions: false # forcetypeassert covers this
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment  # noisy; use deliberately on hot structs only
+      settings:
+        shadow:
+          strict: false
+    gocyclo:
+      min-complexity: 15
+    nestif:
+      min-complexity: 5
+    exhaustive:
+      default-signifies-exhaustive: false # list every case; default handles values that should not exist
+    gosec:
+      excludes:
+        - G104 # duplicates errcheck
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: receiver-naming
+        - name: error-naming
+        - name: error-strings
+        - name: error-return
+        - name: errorf
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: indent-error-flow
+        - name: superfluous-else
+        - name: early-return
+        - name: unexported-return
+        - name: unused-parameter
+        - name: blank-imports
+        - name: dot-imports
+        - name: time-naming
+        - name: increment-decrement
+        - name: range
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      disabled-checks:
+        - hugeParam        # leave value-vs-pointer to judgment and profiling
+        - whyNoLint        # nolintlint covers this
+        - unnamedResult
+    sloglint:
+      no-mixed-args: true
+      kv-only: true
+      static-msg: true
+      key-naming-case: snake
+      context: scope   # use InfoContext etc. when a ctx is in scope
+      no-global: all   # inject *slog.Logger; no slog.Info / slog.Default
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    perfsprint:
+      strconcat: false
+
+  exclusions:
+    generated: lax
+    presets:
+      # std-error-handling hides unchecked Close/Flush/Remove (mostly read-side
+      # noise). A Close on a file you WROTE must still be checked: that is a
+      # review item (references/review-checklist.md), not something lint enforces.
+      - std-error-handling
+      - common-false-positives
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - forcetypeassert
+          - gocyclo
+          - containedctx
+          - noctx
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      extra-rules: true
+    goimports:
+      local-prefixes:
+        - github.com/Arifur999/prokolpo-backend
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
