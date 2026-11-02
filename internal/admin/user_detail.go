@@ -121,9 +121,9 @@ func (s *Service) userProjects(ctx context.Context, d *UserDetail) error {
 	rows, err := s.pool.Query(ctx, `
 		SELECT p.id, p.name, p.kind, p.ownership, o.first_name || ' ' || o.last_name, o.id,
 		       (SELECT count(*) FROM project_members x WHERE x.project_id = p.id),
-		       coalesce((SELECT array_agg(n ORDER BY n) FROM (
-		           SELECT o2.first_name || ' ' || o2.last_name AS n FROM project_members x JOIN users o2 ON o2.id = x.user_id
-		           WHERE x.project_id = p.id AND x.user_id <> m.user_id LIMIT 3) z), '{}'),
+		       ARRAY(SELECT o2.first_name || ' ' || o2.last_name FROM project_members x JOIN users o2 ON o2.id = x.user_id
+		             WHERE x.project_id = p.id AND x.user_id <> m.user_id
+		             ORDER BY x.role = 'OWNER' DESC, x.created_at, x.user_id LIMIT 3),
 		       m.role,
 		       (SELECT max(a.created_at) FROM activity_log a WHERE a.project_id = p.id)
 		FROM project_members m JOIN projects p ON p.id = m.project_id JOIN users o ON o.id = p.owner_id

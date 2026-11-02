@@ -5,10 +5,14 @@ package admin
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/Arifur999/prokolpo-backend/internal/apperr"
 	"github.com/Arifur999/prokolpo-backend/internal/httpx"
+	"github.com/Arifur999/prokolpo-backend/internal/project"
 	"github.com/Arifur999/prokolpo-backend/internal/staff"
 )
 
@@ -106,4 +110,42 @@ func TestOnlySuperAdminsSuspend(t *testing.T) {
 	}
 	err := f.svc.SetSuspended(ctx, Actor{ID: f.staff, Lang: httpx.LangBangla}, f.owner, true, "প্রতারণার অভিযোগ — তদন্ত চলছে", "123456")
 	wantCode(t, err, codeNotAllowed)
+}
+
+// The identity checklist names the owner, then the members who joined first: always the same three.
+func TestTheChecklistNamesTheOwnerThenTheEarliestMembers(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	p, err := project.NewService(f.pool).Create(ctx, f.owner, "নগদ ক্যাশ", project.NewProject{
+		Name: "মিরপুর ৬ তলা ভবন", Kind: project.KindBuilding, Ownership: project.OwnershipPersonal, StartDate: time.Now(),
+		Categories: []string{"রড"}, Phases: []string{"পাইলিং"},
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	// Joined in this order; names sort the other way, so an alphabetical pick would differ.
+	var viewed string
+	for i, name := range []string{"রাশেদ", "হাবিব", "সাইফুল", "তানিয়া", "আলম"} {
+		var id string
+		if err = f.pool.QueryRow(ctx, `INSERT INTO users (first_name, last_name, phone, password_hash, terms_accepted_at)
+			VALUES ($1, 'খান', $2, 'x', now()) RETURNING id`, name, fmt.Sprintf("0181100000%d", i)).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = f.pool.Exec(ctx, `INSERT INTO project_members (project_id, user_id, role, created_at)
+			VALUES ($1, $2, 'MANAGER', now() + make_interval(mins => $3))`, p.ID, id, i+1); err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			viewed = id
+		}
+	}
+
+	d, err := f.svc.User(ctx, viewed)
+	if err != nil || len(d.Projects) != 1 {
+		t.Fatalf("detail = %+v, %v", d, err)
+	}
+	want := []string{"সুমাইয়া আক্তার", "হাবিব খান", "সাইফুল খান"}
+	if got := d.Projects[0].Others; !slices.Equal(got, want) {
+		t.Fatalf("others = %v, want %v", got, want)
+	}
 }
