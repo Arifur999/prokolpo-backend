@@ -46,7 +46,9 @@ production image build.
 | `internal/auth` | registration, login, rotating sessions, password reset |
 | `internal/project` | projects, their starting books, membership checks, delete and restore |
 | `internal/storage` | uploaded files on local disk under `UPLOAD_DIR` (default `data/uploads`) |
-| `internal/books` | a project's money: expenses, suppliers, contractors, attendance, payments, accounts, activity log |
+| `internal/books` | a project's money: expenses, suppliers, contractors, attendance, payments, accounts |
+| `internal/members` | a project's team: invitations by phone, roles, removal, owner-issued reset codes |
+| `internal/activity`, `internal/timeline` | writing the activity log inside each change; reading it for the activity page |
 | `internal/token`, `internal/password`, `internal/phone` | access/opaque tokens, argon2id, BD mobile numbers |
 | `internal/ratelimit`, `internal/mail` | in-memory limits (single instance), SMTP and log mailers |
 | `internal/testdb` | migrated, emptied database for integration tests (name must end in `_test`) |
@@ -95,6 +97,11 @@ carry a stable `code` (`ACCOUNT_SUSPENDED`, `RESET_LINK_INVALID`, ...). Messages
 | `POST /auth/password/email` | `phone` | emails a 30-minute single-use link, once a minute |
 | `POST /auth/password/check` | `token` | is the link still usable |
 | `POST /auth/password/reset` | `token, password` | signs out every session |
+| `POST /auth/password/code` | `phone, code, password` | the 6-digit code a project's owner gave; 3 wrong tries spend it |
+| `POST /auth/invite` | `phone` | the newest open invitation for the number (20 a minute per address) |
+
+While registration is closed or invite-only, an invited number can still register. Registering joins every project
+that invited the number.
 
 A session is `{ user, accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt }`. Access tokens are
 15-minute HS256 JWTs (`sub`, `role`: `user` or `staff`); refresh tokens are opaque and stored hashed.
@@ -138,6 +145,21 @@ Under `/projects/{id}`; members read, owners and managers write (viewers get 403
 | `PUT, GET /expenses/{eid}/memo` | the memo photo as the raw body, JPG/PNG/WebP up to 5MB, judged by its bytes |
 
 Spending (`project_spent`) is every bill plus labour: daily wages, extra work, and contract payments up to the contract.
+
+## Members and activity
+
+Under `/projects/{id}`; members read, only the owner changes the team (others get 403 `OWNER_ONLY`).
+
+| Endpoint | Notes |
+| --- | --- |
+| `GET /members` | members (owner first, last active, entries this month) and open invitations |
+| `GET /members/lookup?phone=` | `MEMBER`, `PENDING`, `FOUND` (with the name) or `NEW` |
+| `POST /members` | `phone, role` (MANAGER or VIEWER): an account joins now, any other number waits as an invitation |
+| `PATCH /members/{uid}`, `DELETE /members/{uid}` | change role, remove; the owner is fixed (`OWNER_FIXED`); entries stay |
+| `POST /members/{uid}/reset-code` | a 6-digit code, 30 minutes, once; a new code voids the old one |
+| `DELETE /invites/{iid}` | cancels an invitation |
+| `GET /activity?actor=&action=&days=&before=` | 50 entries a page, newest first, with the bill, payment or transfer joined in |
+| `GET /activity/week` | each member's entries since Sunday |
 
 ## Database
 
