@@ -19,9 +19,8 @@ type db interface {
 }
 
 // summarySelect lists projects with the caller's role ($1 is the caller).
-// Spent stays 0 until the expense books exist.
 const summarySelect = `
-	SELECT p.id, p.name, p.kind, p.ownership, p.status, p.location, p.budget, 0::bigint,
+	SELECT p.id, p.name, p.kind, p.ownership, p.status, p.location, p.budget, project_spent(p.id),
 	       p.farm_type, p.floors, p.business_type, m.role,
 	       (SELECT count(*) FROM project_members x WHERE x.project_id = p.id), p.created_at`
 
@@ -116,7 +115,9 @@ func projectFor(ctx context.Context, q db, userID, projectID string) (Project, e
 }
 
 func phasesOf(ctx context.Context, q db, projectID string) ([]Phase, error) {
-	rows, err := q.Query(ctx, `SELECT id, name, budget, 0::bigint FROM project_phases WHERE project_id = $1 ORDER BY position`, projectID)
+	rows, err := q.Query(ctx, `SELECT ph.id, ph.name, ph.budget,
+		       coalesce((SELECT sum(e.amount) FROM expenses e WHERE e.phase_id = ph.id AND e.deleted_at IS NULL), 0)::bigint
+		FROM project_phases ph WHERE ph.project_id = $1 ORDER BY ph.position`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list phases: %w", err)
 	}
