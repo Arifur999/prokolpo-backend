@@ -13,6 +13,7 @@ import (
 // Env names the deployment the process runs in.
 type Env string
 
+// Deployments the API knows.
 const (
 	EnvDevelopment Env = "development"
 	EnvTest        Env = "test"
