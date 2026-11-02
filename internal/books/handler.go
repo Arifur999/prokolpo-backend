@@ -56,6 +56,8 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("POST", "/expenses/{eid}/delete", h.deleteExpense)
 	route("POST", "/expenses/{eid}/restore", h.restoreExpense)
 	route("POST", "/payments/{pid}/delete", h.deletePayment)
+	route("PUT", "/expenses/{eid}/memo", h.saveMemo)
+	route("GET", "/expenses/{eid}/memo", h.memo)
 }
 
 // call is what every handler does: who is asking, about which project, in which language.
@@ -347,4 +349,24 @@ func (h *Handler) deletePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.reply(w, r, http.StatusOK, nil, h.svc.DeletePayment(r.Context(), c.user, c.project, r.PathValue("pid"), reason))
+}
+
+// saveMemo takes the photo as the raw request body, up to 5MB.
+func (h *Handler) saveMemo(w http.ResponseWriter, r *http.Request) {
+	c := h.call(r)
+	body := http.MaxBytesReader(w, r.Body, MaxMemoBytes)
+	h.reply(w, r, http.StatusOK, nil, h.svc.SaveMemo(r.Context(), c.user, c.project, r.PathValue("eid"), body))
+}
+
+func (h *Handler) memo(w http.ResponseWriter, r *http.Request) {
+	c := h.call(r)
+	f, name, err := h.svc.Memo(r.Context(), c.user, c.project, r.PathValue("eid"))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	defer func() { _ = f.Close() }() // read-only file, nothing to flush
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	http.ServeContent(w, r, name, time.Time{}, f)
 }

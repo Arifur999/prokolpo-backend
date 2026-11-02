@@ -42,7 +42,7 @@ func setup(t *testing.T) fixture {
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
-	f := fixture{svc: NewService(pool, projects), pool: pool, owner: owner, project: p.ID, phase: p.Phases[0].ID}
+	f := fixture{svc: NewService(pool, projects, nil), pool: pool, owner: owner, project: p.ID, phase: p.Phases[0].ID}
 	if err := pool.QueryRow(ctx, `SELECT id FROM expense_categories WHERE project_id = $1 AND name = 'রড'`, p.ID).Scan(&f.category); err != nil {
 		t.Fatalf("category: %v", err)
 	}

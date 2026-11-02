@@ -25,12 +25,13 @@ type Members interface {
 type Service struct {
 	pool    *pgxpool.Pool
 	members Members
+	files   Files
 	now     func() time.Time
 }
 
-// NewService returns a Service backed by pool.
-func NewService(pool *pgxpool.Pool, members Members) *Service {
-	return &Service{pool: pool, members: members, now: time.Now}
+// NewService returns a Service backed by pool. files keeps memo photos; nil turns them off.
+func NewService(pool *pgxpool.Pool, members Members, files Files) *Service {
+	return &Service{pool: pool, members: members, files: files, now: time.Now}
 }
 
 // db is what the queries need from a pool or a transaction.

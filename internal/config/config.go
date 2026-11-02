@@ -38,6 +38,8 @@ type Config struct {
 	// AppURL is the frontend's origin; emailed links point there.
 	AppURL string
 	SMTP   SMTP
+	// UploadDir holds files people attach (memo photos); created if missing.
+	UploadDir string
 }
 
 // SMTP configures outgoing email. With no Host, mail is logged instead of
@@ -65,6 +67,7 @@ func Load(getenv func(string) string) (Config, error) {
 		JWTSecret:       []byte(getenv("JWT_SECRET")),
 		AccessTokenTTL:  15 * time.Minute,
 		AppURL:          cmp.Or(getenv("APP_URL"), "http://localhost:3000"),
+		UploadDir:       cmp.Or(getenv("UPLOAD_DIR"), "data/uploads"),
 		SMTP: SMTP{
 			Host:     getenv("SMTP_HOST"),
 			Port:     cmp.Or(getenv("SMTP_PORT"), "587"),

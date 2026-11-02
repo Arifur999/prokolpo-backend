@@ -19,6 +19,7 @@ import (
 	"github.com/Arifur999/prokolpo-backend/internal/project"
 	"github.com/Arifur999/prokolpo-backend/internal/server"
 	"github.com/Arifur999/prokolpo-backend/internal/status"
+	"github.com/Arifur999/prokolpo-backend/internal/storage"
 	"github.com/Arifur999/prokolpo-backend/internal/support"
 	"github.com/Arifur999/prokolpo-backend/internal/token"
 )
@@ -40,11 +41,17 @@ func Run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	defer pool.Close()
 
 	issuer := token.NewIssuer(cfg.JWTSecret, cfg.AccessTokenTTL)
+	uploads, err := storage.Open(cfg.UploadDir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = uploads.Close() }() // closing a directory handle cannot lose data
+
 	projects := project.NewService(pool)
 	authService := auth.NewService(pool, issuer, newMailer(cfg, log), cfg.AppURL, log)
 
 	srv := &http.Server{
-		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Support: support.NewService(pool), Project: projects, Books: books.NewService(pool, projects), Status: status.NewService(pool), Issuer: issuer}),
+		Handler:           server.New(server.Deps{Log: log, DB: pool, Auth: authService, Support: support.NewService(pool), Project: projects, Books: books.NewService(pool, projects, uploads), Status: status.NewService(pool), Issuer: issuer}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

@@ -17,6 +17,7 @@ var messages = msg.Catalog{
 	codeInvalidInput: {BN: "কিছু তথ্য ঠিক নেই — লাল চিহ্ন দেওয়া ঘরগুলো দেখুন", EN: "Some details need fixing — check the highlighted fields"},
 	codeNotFound:     {BN: "এন্ট্রিটা পাওয়া যায়নি — হয়তো মুছে ফেলা হয়েছে", EN: "That entry was not found — it may have been deleted"},
 	codeNameTaken:    {BN: "এই নামে আগেই একজন আছে", EN: "Someone with this name is already here"},
+	codeNotImage:     {BN: "শুধু JPG বা PNG ছবি দেওয়া যাবে", EN: "Only JPG or PNG photos"},
 	codeSameAccount:  {BN: "একই অ্যাকাউন্টে সরানো যাবে না", EN: "You can't move money to the same account"},
 }
 

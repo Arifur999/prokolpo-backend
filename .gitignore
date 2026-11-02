@@ -12,3 +12,6 @@ cover.out
 .vscode/
 .DS_Store
 *.log
+
+# Uploaded files in development
+data/

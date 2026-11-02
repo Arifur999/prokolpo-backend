@@ -45,6 +45,7 @@ production image build.
 | `internal/health` | `GET /api/v1/health` |
 | `internal/auth` | registration, login, rotating sessions, password reset |
 | `internal/project` | projects, their starting books, membership checks, delete and restore |
+| `internal/storage` | uploaded files on local disk under `UPLOAD_DIR` (default `data/uploads`) |
 | `internal/books` | a project's money: expenses, suppliers, contractors, attendance, payments, accounts, activity log |
 | `internal/token`, `internal/password`, `internal/phone` | access/opaque tokens, argon2id, BD mobile numbers |
 | `internal/ratelimit`, `internal/mail` | in-memory limits (single instance), SMTP and log mailers |
@@ -134,6 +135,7 @@ Under `/projects/{id}`; members read, owners and managers write (viewers get 403
 | `GET /attendance?week=`, `PUT /attendance` | daily teams for the week holding the date; PUT `cells[{contractorId, day, headcount, halfDay}]`, 0 clears a day; a day keeps the wage it was first saved at |
 | `GET, POST /accounts`, `GET /accounts/ledger`, `POST /transfers` | balances may go negative; transfers are not spending |
 | `POST /payments/{pid}/delete` | not for a payment made with a bill |
+| `PUT, GET /expenses/{eid}/memo` | the memo photo as the raw body, JPG/PNG/WebP up to 5MB, judged by its bytes |
 
 Spending (`project_spent`) is every bill plus labour: daily wages, extra work, and contract payments up to the contract.
 
