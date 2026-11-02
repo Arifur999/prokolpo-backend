@@ -1,0 +1,87 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: prokolpo
+          POSTGRES_PASSWORD: prokolpo
+          POSTGRES_DB: prokolpo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prokolpo -d prokolpo_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgres://prokolpo:prokolpo@localhost:5432/prokolpo_test?sslmode=disable
+      TEST_DATABASE_URL: postgres://prokolpo:prokolpo@localhost:5432/prokolpo_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Modules are tidy
+        run: go mod tidy -diff
+      - run: go mod verify
+      - run: go build ./...
+      - run: go vet -tags=integration ./...
+      - name: Migrations apply and roll back cleanly
+        run: |
+          go run ./cmd/migrate up
+          go run ./cmd/migrate down
+          go run ./cmd/migrate up
+      - name: Tests (unit + integration)
+        run: go test -race -shuffle=on -tags=integration -covermode=atomic -coverprofile=cover.out ./...
+      - run: go tool cover -func=cover.out | tail -1
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15 # pinned; bump deliberately so new linters do not break CI unannounced
+          args: --build-tags=integration
+
+  vuln:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1 ./...
+
+  image:
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build the production image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
