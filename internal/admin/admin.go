@@ -42,6 +42,7 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.Handler) http.Han
 		mux.Handle(method+" /api/v1/admin"+path, guard(fn))
 	}
 	route("GET", "/overview", h.overview)
+	route("GET", "/badges", h.badges)
 }
 
 func (h *Handler) reply(w http.ResponseWriter, r *http.Request, status int, data any, err error) {
@@ -55,4 +56,15 @@ func (h *Handler) reply(w http.ResponseWriter, r *http.Request, status int, data
 func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 	o, err := h.svc.Overview(r.Context(), auth.UserFrom(r.Context()).UserID)
 	h.reply(w, r, http.StatusOK, o, err)
+}
+
+// Badges are the counts the panel's menu shows; asking for them also keeps the session alive.
+type Badges struct {
+	OpenSupport int `json:"openSupport"`
+}
+
+func (h *Handler) badges(w http.ResponseWriter, r *http.Request) {
+	var b Badges
+	err := h.svc.pool.QueryRow(r.Context(), `SELECT count(*) FROM support_requests WHERE status = 'open'`).Scan(&b.OpenSupport)
+	h.reply(w, r, http.StatusOK, b, err)
 }
