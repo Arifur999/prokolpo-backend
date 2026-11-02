@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Arifur999/prokolpo-backend/internal/apperr"
@@ -44,6 +45,21 @@ func TestRegisterValidateReportsEveryField(t *testing.T) {
 		if got[path] != msg {
 			t.Errorf("%s: message %q, want %q", path, got[path], msg)
 		}
+	}
+}
+
+func TestRegisterValidateCapsLengths(t *testing.T) {
+	req := validRequest()
+	req.FirstName = strings.Repeat("ক", 31)
+	req.CompanyName = strings.Repeat("ক", 81)
+	_, err := req.validate("bn")
+	e, _ := apperr.As(err)
+	paths := map[string]bool{}
+	for _, f := range e.Fields {
+		paths[f.Path] = true
+	}
+	if !paths["firstName"] || !paths["companyName"] || len(paths) != 2 {
+		t.Errorf("fields = %+v, want firstName and companyName", e.Fields)
 	}
 }
 

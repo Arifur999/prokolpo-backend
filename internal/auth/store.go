@@ -153,18 +153,29 @@ func insertResetLink(ctx context.Context, q db, userID string, hash []byte, expi
 	return err
 }
 
-// usableResetLink returns the link's id and user when it is unexpired, unused and not voided.
-func usableResetLink(ctx context.Context, q db, hash []byte, lock bool) (id, userID string, err error) {
-	sql := `SELECT id, user_id FROM password_reset_tokens
-	        WHERE token_hash = $1 AND used_at IS NULL AND voided_at IS NULL AND expires_at > now()`
+type resetLinkRow struct {
+	ID        string
+	UserID    string
+	Email     *string
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+	VoidedAt  *time.Time
+}
+
+// resetLinkByHash finds a link whatever its state; lock holds it for a reset.
+func resetLinkByHash(ctx context.Context, q db, hash []byte, lock bool) (resetLinkRow, error) {
+	sql := `SELECT t.id, t.user_id, u.email, t.expires_at, t.used_at, t.voided_at
+	        FROM password_reset_tokens t JOIN users u ON u.id = t.user_id
+	        WHERE t.token_hash = $1`
 	if lock {
-		sql += ` FOR UPDATE`
+		sql += ` FOR UPDATE OF t`
 	}
-	err = q.QueryRow(ctx, sql, hash).Scan(&id, &userID)
+	var r resetLinkRow
+	err := q.QueryRow(ctx, sql, hash).Scan(&r.ID, &r.UserID, &r.Email, &r.ExpiresAt, &r.UsedAt, &r.VoidedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", "", errNotFound
+		return resetLinkRow{}, errNotFound
 	}
-	return id, userID, err
+	return r, err
 }
 
 func markResetLinkUsed(ctx context.Context, q db, id string) error {

@@ -20,6 +20,8 @@ const (
 	codeNoEmail            = "NO_EMAIL_ON_ACCOUNT"
 	codeResetThrottled     = "RESET_RATE_LIMITED"
 	codeResetLinkInvalid   = "RESET_LINK_INVALID"
+	codeResetLinkExpired   = "RESET_LINK_EXPIRED"
+	codeResetLinkUsed      = "RESET_LINK_USED"
 )
 
 type text struct{ bn, en string }
@@ -37,12 +39,17 @@ var messages = map[string]text{
 	codeAccountNotFound:    {"এই নম্বরে কোনো অ্যাকাউন্ট নেই — নতুন অ্যাকাউন্ট খুলতে পারেন", "No account uses this number — you can create one"},
 	codeNoEmail:            {"আপনার অ্যাকাউন্টে কোনো ইমেইল দেওয়া নেই", "Your account has no email address"},
 	codeResetThrottled:     {"1 মিনিট পর আবার পাঠাতে পারবেন", "You can send another link in a minute"},
-	codeResetLinkInvalid:   {"লিংকের মেয়াদ শেষ বা আগেই ব্যবহার হয়েছে — নতুন লিংক নিন", "This link has expired or was already used — request a new one"},
+	codeResetLinkInvalid:   {"এই লিংক আর কাজ করবে না — নতুন লিংক নিন", "This link no longer works — request a new one"},
+	codeResetLinkExpired:   {"লিংকের মেয়াদ শেষ", "This link has expired"},
+	codeResetLinkUsed:      {"এই লিংক আগেই ব্যবহার হয়েছে", "This link was already used"},
 }
 
 // Field messages for registration and reset validation.
 var fieldMessages = map[string]text{
 	"companyShort": {"কোম্পানির নাম কমপক্ষে ২ অক্ষরের হতে হবে", "Company name must be at least 2 characters"},
+	"companyLong":  {"কোম্পানির নাম ৮০ অক্ষরের বেশি হতে পারবে না", "Company name can't be longer than 80 characters"},
+	"firstLong":    {"প্রথম নাম ৩০ অক্ষরের বেশি হতে পারবে না", "First name can't be longer than 30 characters"},
+	"lastLong":     {"শেষ নাম ৩০ অক্ষরের বেশি হতে পারবে না", "Last name can't be longer than 30 characters"},
 	"firstMissing": {"প্রথম নাম দিন", "Enter your first name"},
 	"firstShort":   {"প্রথম নাম কমপক্ষে ২ অক্ষরের হতে হবে", "First name must be at least 2 characters"},
 	"lastMissing":  {"শেষ নাম দিন", "Enter your last name"},

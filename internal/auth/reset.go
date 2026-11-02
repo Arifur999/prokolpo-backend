@@ -73,13 +73,44 @@ func (s *Service) SendResetLink(ctx context.Context, rawPhone, lang string) erro
 	return nil
 }
 
-// CheckResetLink tells the reset page whether to show the form or the expired state.
-func (s *Service) CheckResetLink(ctx context.Context, raw string) error {
-	_, _, err := usableResetLink(ctx, s.pool, token.Hash(raw), false)
+// ResetLinkInfo is what the reset page shows above the form.
+type ResetLinkInfo struct {
+	MaskedEmail *string `json:"maskedEmail"`
+}
+
+// CheckResetLink tells the reset page whether to show the form, the expired
+// state or the already-used state.
+func (s *Service) CheckResetLink(ctx context.Context, raw string) (ResetLinkInfo, error) {
+	link, err := resetLinkByHash(ctx, s.pool, token.Hash(raw), false)
 	if errors.Is(err, errNotFound) {
-		return fail(apperr.KindInvalid, codeResetLinkInvalid)
+		return ResetLinkInfo{}, fail(apperr.KindInvalid, codeResetLinkInvalid)
 	}
-	return err
+	if err != nil {
+		return ResetLinkInfo{}, fmt.Errorf("find reset link: %w", err)
+	}
+	info := ResetLinkInfo{}
+	if link.Email != nil {
+		masked := maskEmail(*link.Email)
+		info.MaskedEmail = &masked
+	}
+	if stateErr := link.unusable(); stateErr != nil {
+		return info, stateErr
+	}
+	return info, nil
+}
+
+// unusable says why a link cannot reset a password, or nil when it can.
+func (l resetLinkRow) unusable() error {
+	switch {
+	case l.UsedAt != nil:
+		return fail(apperr.KindInvalid, codeResetLinkUsed)
+	case l.VoidedAt != nil:
+		return fail(apperr.KindInvalid, codeResetLinkInvalid)
+	case !time.Now().Before(l.ExpiresAt):
+		return fail(apperr.KindInvalid, codeResetLinkExpired)
+	default:
+		return nil
+	}
 }
 
 // ResetPassword sets a new password from a link and signs the account out everywhere.
@@ -91,23 +122,24 @@ func (s *Service) ResetPassword(ctx context.Context, raw, newPassword, lang stri
 	if err != nil {
 		return err
 	}
-	var invalid bool
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		linkID, userID, txErr := usableResetLink(ctx, tx, token.Hash(raw), true)
+		link, txErr := resetLinkByHash(ctx, tx, token.Hash(raw), true)
 		if errors.Is(txErr, errNotFound) {
-			invalid = true
-			return nil
+			return fail(apperr.KindInvalid, codeResetLinkInvalid)
 		}
 		if txErr != nil {
 			return txErr
 		}
-		return applyReset(ctx, tx, linkID, userID, hash)
+		if refusal := link.unusable(); refusal != nil {
+			return refusal
+		}
+		return applyReset(ctx, tx, link.ID, link.UserID, hash)
 	})
+	if _, refused := apperr.As(err); refused {
+		return err
+	}
 	if err != nil {
 		return fmt.Errorf("reset password: %w", err)
-	}
-	if invalid {
-		return fail(apperr.KindInvalid, codeResetLinkInvalid)
 	}
 	return nil
 }

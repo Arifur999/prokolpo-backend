@@ -227,8 +227,9 @@ func TestPasswordResetByEmail(t *testing.T) {
 	wantCode(t, svc.SendResetLink(ctx, "01712345678", "bn"), codeResetThrottled)
 
 	link := box.lastLinkToken(t)
-	if checkErr := svc.CheckResetLink(ctx, link); checkErr != nil {
-		t.Fatalf("CheckResetLink: %v", checkErr)
+	info, checkErr := svc.CheckResetLink(ctx, link)
+	if checkErr != nil || info.MaskedEmail == nil || *info.MaskedEmail != "ab•••@example.com" {
+		t.Fatalf("CheckResetLink = %+v, %v", info, checkErr)
 	}
 	wantCode(t, svc.ResetPassword(ctx, link, "short", "bn"), codeInvalidInput)
 	if resetErr := svc.ResetPassword(ctx, link, "notun2026", "bn"); resetErr != nil {
@@ -236,7 +237,9 @@ func TestPasswordResetByEmail(t *testing.T) {
 	}
 
 	// The link is spent, the old session is gone, and only the new password works.
-	wantCode(t, svc.CheckResetLink(ctx, link), codeResetLinkInvalid)
+	_, err = svc.CheckResetLink(ctx, link)
+	wantCode(t, err, codeResetLinkUsed)
+	wantCode(t, svc.ResetPassword(ctx, link, "abar2026", "bn"), codeResetLinkUsed)
 	_, err = svc.Refresh(ctx, session.RefreshToken, ClientMeta{})
 	wantCode(t, err, codeSessionInvalid)
 	_, err = svc.Login(ctx, "01712345678", "karim2026", false, ClientMeta{})
@@ -244,6 +247,28 @@ func TestPasswordResetByEmail(t *testing.T) {
 	if _, err := svc.Login(ctx, "01712345678", "notun2026", false, ClientMeta{}); err != nil {
 		t.Fatalf("Login with new password: %v", err)
 	}
+}
+
+func TestResetLinkStates(t *testing.T) {
+	svc, pool, box := newTestService(t)
+	ctx := context.Background()
+	if _, err := svc.Register(ctx, karim(), ClientMeta{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SendResetLink(ctx, "01712345678", "bn"); err != nil {
+		t.Fatal(err)
+	}
+	link := box.lastLinkToken(t)
+
+	if _, err := pool.Exec(ctx, `UPDATE password_reset_tokens SET expires_at = now() - interval '1 second'`); err != nil {
+		t.Fatal(err)
+	}
+	_, err := svc.CheckResetLink(ctx, link)
+	wantCode(t, err, codeResetLinkExpired)
+	wantCode(t, svc.ResetPassword(ctx, link, "notun2026", "bn"), codeResetLinkExpired)
+
+	_, err = svc.CheckResetLink(ctx, "never-issued")
+	wantCode(t, err, codeResetLinkInvalid)
 }
 
 func TestResetOptionsForUnknownNumber(t *testing.T) {

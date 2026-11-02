@@ -10,6 +10,12 @@ import (
 	"github.com/Arifur999/prokolpo-backend/internal/phone"
 )
 
+// Length caps from the registration form (design board Register).
+const (
+	maxNameLen    = 30
+	maxCompanyLen = 80
+)
+
 // RegisterInput is the registration form after validation and normalisation.
 type RegisterInput struct {
 	FirstName   string
@@ -46,19 +52,27 @@ func (req registerRequest) validate(lang string) (RegisterInput, error) {
 		Locale:    lang,
 	}
 	if company := strings.TrimSpace(req.CompanyName); company != "" {
-		if utf8.RuneCountInString(company) < 2 {
+		switch n := utf8.RuneCountInString(company); {
+		case n < 2:
 			add("companyName", "companyShort")
+		case n > maxCompanyLen:
+			add("companyName", "companyLong")
 		}
 		in.CompanyName = &company
 	}
-	switch {
-	case in.FirstName == "":
+	switch n := utf8.RuneCountInString(in.FirstName); {
+	case n == 0:
 		add("firstName", "firstMissing")
-	case utf8.RuneCountInString(in.FirstName) < 2:
+	case n < 2:
 		add("firstName", "firstShort")
+	case n > maxNameLen:
+		add("firstName", "firstLong")
 	}
-	if in.LastName == "" {
+	switch n := utf8.RuneCountInString(in.LastName); {
+	case n == 0:
 		add("lastName", "lastMissing")
+	case n > maxNameLen:
+		add("lastName", "lastLong")
 	}
 	if email := strings.TrimSpace(req.Email); email != "" {
 		if !isEmail(email) {

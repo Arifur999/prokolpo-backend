@@ -173,11 +173,12 @@ func (h *Handler) checkResetLink(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	if err := h.svc.CheckResetLink(r.Context(), req.Token); err != nil {
+	info, err := h.svc.CheckResetLink(r.Context(), req.Token)
+	if err != nil {
 		h.fail(w, r, err)
 		return
 	}
-	h.responder.JSON(w, r, http.StatusOK, "", map[string]bool{"valid": true})
+	h.responder.JSON(w, r, http.StatusOK, "", info)
 }
 
 func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
