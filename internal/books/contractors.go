@@ -211,3 +211,12 @@ func (s *Service) SetContractorStatus(ctx context.Context, userID, projectID, co
 		return nil
 	})
 }
+
+// markWorking moves a contractor that has not started to "under way" once work or money
+// is recorded against them.
+func markWorking(ctx context.Context, q db, contractorID string) error {
+	if _, err := q.Exec(ctx, `UPDATE contractors SET status = 'WORKING' WHERE id = $1 AND status = 'NOT_STARTED'`, contractorID); err != nil {
+		return fmt.Errorf("mark contractor working: %w", err)
+	}
+	return nil
+}

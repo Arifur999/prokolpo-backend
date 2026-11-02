@@ -181,6 +181,9 @@ func TestDailyWagesKeepTheRateOfTheDayWorked(t *testing.T) {
 		t.Fatalf("ContractorLedger: %v", err)
 	}
 	// 5×1000 (kept rate) + 4×1000/2 + 2×1500 (new day, new rate).
+	if d.Contractor.Status != "WORKING" {
+		t.Errorf("status = %s, want WORKING once attendance is in", d.Contractor.Status)
+	}
 	if d.Contractor.Wages != 10_000 || d.Contractor.ManDays != 9 || d.Contractor.Due != 10_000 {
 		t.Fatalf("wages %d, man-days %v, due %d", d.Contractor.Wages, d.Contractor.ManDays, d.Contractor.Due)
 	}

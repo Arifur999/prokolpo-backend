@@ -119,6 +119,9 @@ func (s *Service) SaveAttendance(ctx context.Context, userID, projectID string, 
 			if tag.RowsAffected() == 0 {
 				return notFound()
 			}
+			if err := markWorking(ctx, tx, c.ContractorID); err != nil {
+				return err
+			}
 		}
 		if len(cells) == 0 {
 			return nil

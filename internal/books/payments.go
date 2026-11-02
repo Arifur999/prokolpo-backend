@@ -99,6 +99,11 @@ func (s *Service) Pay(ctx context.Context, userID, projectID string, to Party, p
 		if err != nil {
 			return fmt.Errorf("insert payment: %w", err)
 		}
+		if contractorID != nil {
+			if err = markWorking(ctx, tx, *contractorID); err != nil {
+				return err
+			}
+		}
 		return logActivity(ctx, tx, activity{projectID: projectID, actorID: userID, action: "CREATE", entity: "payment", entityID: id, summary: fmt.Sprintf("৳ %d", p.Amount)})
 	})
 }
