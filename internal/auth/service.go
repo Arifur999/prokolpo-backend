@@ -83,15 +83,18 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, meta ClientMet
 	if err != nil {
 		return Session{}, fmt.Errorf("read registration mode: %w", err)
 	}
+	invited, err := hasInvite(ctx, s.pool, in.Phone)
+	if err != nil {
+		return Session{}, fmt.Errorf("check invite: %w", err)
+	}
 	// While registration is closed or invite-only, an invited number may still register.
-	if mode != modeOpen {
-		invited, inviteErr := hasInvite(ctx, s.pool, in.Phone)
-		if inviteErr != nil {
-			return Session{}, fmt.Errorf("check invite: %w", inviteErr)
-		}
-		if !invited {
-			return Session{}, messages.Fail(apperr.KindForbidden, codeRegistrationClosed)
-		}
+	if mode != modeOpen && !invited {
+		return Session{}, messages.Fail(apperr.KindForbidden, codeRegistrationClosed)
+	}
+	// A builder signing up names their company (it heads cards, receipts and reports); someone
+	// joining a project they were invited to has none.
+	if in.CompanyName == nil && !invited {
+		return Session{}, fieldFail(in.Locale, "companyName", "companyMissing")
 	}
 
 	phoneTaken, emailTaken, err := phoneOrEmailTaken(ctx, s.pool, in.Phone, in.Email)

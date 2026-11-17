@@ -303,3 +303,30 @@ func TestAccessTokenFollowsTheAccount(t *testing.T) {
 	}
 	wantCode(t, svc.Active(ctx, claims), codeAccountSuspended)
 }
+
+// A builder names their company; a number someone invited may register without one.
+func TestRegisterAsksForTheCompanyUnlessInvited(t *testing.T) {
+	svc, pool, _ := newTestService(t)
+	ctx := context.Background()
+	in := karim()
+	in.CompanyName = nil
+	_, err := svc.Register(ctx, in, ClientMeta{})
+	wantCode(t, err, codeInvalidInput)
+
+	if _, err = pool.Exec(ctx, `INSERT INTO users (first_name, last_name, phone, password_hash, terms_accepted_at) VALUES ('রহিম', '', '01811000000', 'x', now())`); err != nil {
+		t.Fatal(err)
+	}
+	var owner, projectID string
+	if err = pool.QueryRow(ctx, `SELECT id FROM users WHERE phone = '01811000000'`).Scan(&owner); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.QueryRow(ctx, `INSERT INTO projects (owner_id, name, kind, ownership, start_date) VALUES ($1, 'মিরপুর ভবন', 'BUILDING', 'PERSONAL', now()) RETURNING id`, owner).Scan(&projectID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `INSERT INTO project_invites (project_id, phone, role, invited_by) VALUES ($1, $2, 'MANAGER', $3)`, projectID, in.Phone, owner); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.Register(ctx, in, ClientMeta{}); err != nil {
+		t.Fatalf("an invited number without a company: %v", err)
+	}
+}

@@ -34,8 +34,7 @@ func TestRegisterValidateReportsEveryField(t *testing.T) {
 	}
 	want := map[string]string{
 		"companyName": "কোম্পানির নাম কমপক্ষে ২ অক্ষরের হতে হবে",
-		"firstName":   "প্রথম নাম কমপক্ষে ২ অক্ষরের হতে হবে",
-		"lastName":    "শেষ নাম দিন",
+		"firstName":   "মালিকের নাম কমপক্ষে ২ অক্ষরের হতে হবে",
 		"email":       "সঠিক ইমেইল দিন",
 		"phone":       "সঠিক মোবাইল নম্বর দিন (যেমন 01712345678)",
 		"password":    "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের এবং অক্ষর ও সংখ্যা মিলিয়ে হতে হবে",
@@ -50,7 +49,7 @@ func TestRegisterValidateReportsEveryField(t *testing.T) {
 
 func TestRegisterValidateCapsLengths(t *testing.T) {
 	req := validRequest()
-	req.FirstName = strings.Repeat("ক", 31)
+	req.FirstName = strings.Repeat("ক", 51)
 	req.CompanyName = strings.Repeat("ক", 81)
 	_, err := req.validate("bn")
 	e, _ := apperr.As(err)
@@ -65,11 +64,11 @@ func TestRegisterValidateCapsLengths(t *testing.T) {
 
 func TestRegisterValidateSpeaksEnglish(t *testing.T) {
 	req := validRequest()
-	req.LastName = ""
+	req.FirstName = ""
 	_, err := req.validate("en")
 	e, _ := apperr.As(err)
-	if len(e.Fields) != 1 || e.Fields[0].Message != "Enter your last name" {
-		t.Errorf("fields = %+v, want the English last-name message", e.Fields)
+	if len(e.Fields) != 1 || e.Fields[0].Message != "Enter owner’s name" {
+		t.Errorf("fields = %+v, want the English owner-name message", e.Fields)
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 
 // Length caps from the registration form (design board Register).
 const (
-	maxNameLen    = 30
+	maxNameLen    = 50
 	maxCompanyLen = 80
 )
 
@@ -68,10 +68,9 @@ func (req registerRequest) validate(lang string) (RegisterInput, error) {
 	case n > maxNameLen:
 		add("firstName", "firstLong")
 	}
-	switch n := utf8.RuneCountInString(in.LastName); {
-	case n == 0:
-		add("lastName", "lastMissing")
-	case n > maxNameLen:
+	// The owner's name is one field now (board Register); the last name stays for older
+	// clients and may be blank.
+	if utf8.RuneCountInString(in.LastName) > maxNameLen {
 		add("lastName", "lastLong")
 	}
 	if email := strings.TrimSpace(req.Email); email != "" {

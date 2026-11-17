@@ -3,6 +3,7 @@
 package auth
 
 import (
+	"strings"
 	"time"
 
 	"github.com/Arifur999/prokolpo-backend/internal/token"
@@ -57,7 +58,7 @@ type UserView struct {
 
 func (u User) view() UserView {
 	return UserView{
-		ID: u.ID, FirstName: u.FirstName, LastName: u.LastName, Name: u.FirstName + " " + u.LastName,
+		ID: u.ID, FirstName: u.FirstName, LastName: u.LastName, Name: strings.TrimSpace(u.FirstName + " " + u.LastName),
 		CompanyName: u.CompanyName, Phone: u.Phone, Email: u.Email, Locale: u.Locale,
 		Role: u.Role(), StaffRole: u.StaffRole, CreatedAt: u.CreatedAt,
 	}

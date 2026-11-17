@@ -51,7 +51,7 @@ func TestProfileEditsNameCompanyAndEmail(t *testing.T) {
 		t.Fatalf("updated = %+v, %v", user, err)
 	}
 	p, err := svc.Profile(ctx, me.UserID)
-	if err != nil || p.Name != "আব্দুল " || len(p.Projects) != 0 {
+	if err != nil || p.Name != "আব্দুল" || len(p.Projects) != 0 {
 		t.Fatalf("profile = %+v, %v", p, err)
 	}
 	if err = svc.SetLocale(ctx, me.UserID, "en"); err != nil {
