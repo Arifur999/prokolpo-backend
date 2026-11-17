@@ -18,15 +18,55 @@ type db interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-// summarySelect lists projects with the caller's role ($1 is the caller).
+// summarySelect lists projects with the caller's role ($1 is the caller), the owner's name and
+// company, and the project's first manager (the dashboard card, design v2).
 const summarySelect = `
 	SELECT p.id, p.name, p.kind, p.ownership, p.status, p.location, p.budget, project_spent(p.id),
 	       p.farm_type, p.floors, p.business_type, m.role,
-	       (SELECT count(*) FROM project_members x WHERE x.project_id = p.id), p.created_at`
+	       (SELECT count(*) FROM project_members x WHERE x.project_id = p.id), p.created_at,
+	       p.project_no, project_deposited(p.id),
+	       trim(o.first_name || ' ' || o.last_name), nullif(o.company_name, ''),
+	       mg.user_id, mg.name, mg.phone`
+
+// summaryJoins brings in the owner and the manager who joined first.
+const summaryJoins = `
+	JOIN users o ON o.id = p.owner_id
+	LEFT JOIN LATERAL (
+		SELECT x.user_id, trim(u.first_name || ' ' || u.last_name) AS name, u.phone
+		FROM project_members x JOIN users u ON u.id = x.user_id
+		WHERE x.project_id = p.id AND x.role = 'MANAGER'
+		ORDER BY x.created_at, x.user_id LIMIT 1) mg ON true`
+
+// summaryRow holds a scan of summarySelect until the manager columns are folded into Summary.
+type summaryRow struct {
+	s                                    *Summary
+	managerID, managerName, managerPhone *string
+}
+
+func (r *summaryRow) dest() []any {
+	s := r.s
+	return []any{
+		&s.ID, &s.Name, &s.Kind, &s.Ownership, &s.Status, &s.Location, &s.Budget, &s.Spent,
+		&s.FarmType, &s.Floors, &s.BusinessType, &s.Role, &s.MemberCount, &s.CreatedAt,
+		&s.ProjectNo, &s.Deposited, &s.OwnerName, &s.OwnerCompany, &r.managerID, &r.managerName, &r.managerPhone,
+	}
+}
+
+func (r *summaryRow) finish() {
+	if r.managerID != nil {
+		r.s.Manager = &Manager{ID: *r.managerID, Name: *r.managerName, Phone: *r.managerPhone}
+	}
+	// A project nobody has spent on or paid into yet shows the "নতুন" pill.
+	r.s.IsNew = r.s.Spent == 0 && r.s.Deposited == 0
+}
 
 func scanSummary(row pgx.Row, s *Summary) error {
-	return row.Scan(&s.ID, &s.Name, &s.Kind, &s.Ownership, &s.Status, &s.Location, &s.Budget, &s.Spent,
-		&s.FarmType, &s.Floors, &s.BusinessType, &s.Role, &s.MemberCount, &s.CreatedAt)
+	r := summaryRow{s: s}
+	if err := row.Scan(r.dest()...); err != nil {
+		return err
+	}
+	r.finish()
+	return nil
 }
 
 func insertProject(ctx context.Context, tx pgx.Tx, ownerID string, np NewProject) (string, error) {
@@ -67,7 +107,7 @@ func seedBooks(ctx context.Context, tx pgx.Tx, projectID, ownerID, cashName stri
 
 func listSummaries(ctx context.Context, q db, userID string) ([]Summary, error) {
 	rows, err := q.Query(ctx, summarySelect+`
-		FROM projects p JOIN project_members m ON m.project_id = p.id AND m.user_id = $1
+		FROM projects p JOIN project_members m ON m.project_id = p.id AND m.user_id = $1`+summaryJoins+`
 		WHERE p.deleted_at IS NULL
 		ORDER BY p.status = 'DONE', p.created_at DESC`, userID)
 	if err != nil {
@@ -99,11 +139,12 @@ func projectFor(ctx context.Context, q db, userID, projectID string) (Project, e
 	row := q.QueryRow(ctx, summarySelect+`,
 		       p.description, to_char(p.start_date, 'YYYY-MM-DD'), p.batches, p.plots, p.land_area::float8, p.land_unit,
 		       (SELECT count(*) FROM money_accounts a WHERE a.project_id = p.id)
-		FROM projects p JOIN project_members m ON m.project_id = p.id AND m.user_id = $1
+		FROM projects p JOIN project_members m ON m.project_id = p.id AND m.user_id = $1`+summaryJoins+`
 		WHERE p.id = $2 AND p.deleted_at IS NULL`, userID, projectID)
-	err := row.Scan(&p.ID, &p.Name, &p.Kind, &p.Ownership, &p.Status, &p.Location, &p.Budget, &p.Spent,
-		&p.FarmType, &p.Floors, &p.BusinessType, &p.Role, &p.MemberCount, &p.CreatedAt,
-		&p.Description, &p.StartDate, &p.Batches, &p.Plots, &p.LandArea, &p.LandUnit, &p.AccountCount)
+	r := summaryRow{s: &p.Summary}
+	err := row.Scan(append(r.dest(),
+		&p.Description, &p.StartDate, &p.Batches, &p.Plots, &p.LandArea, &p.LandUnit, &p.AccountCount)...)
+	r.finish()
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Project{}, errNotMember
 	}

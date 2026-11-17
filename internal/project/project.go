@@ -50,6 +50,19 @@ type Summary struct {
 	Role         string    `json:"role"`
 	MemberCount  int       `json:"memberCount"`
 	CreatedAt    time.Time `json:"createdAt"`
+	ProjectNo    int       `json:"projectNo"`
+	Deposited    int64     `json:"deposited"`
+	OwnerName    string    `json:"ownerName"`
+	OwnerCompany *string   `json:"ownerCompany"`
+	Manager      *Manager  `json:"manager"`
+	IsNew        bool      `json:"isNew"`
+}
+
+// Manager is the project's first manager, shown on the dashboard card.
+type Manager struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Phone string `json:"phone"`
 }
 
 // Project is the full record behind the overview page.
