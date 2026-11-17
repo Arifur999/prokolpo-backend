@@ -24,6 +24,14 @@ func TestValidate(t *testing.T) {
 	}
 }
 
+func TestValidateManaged(t *testing.T) {
+	for pw, short := range map[string]bool{"abc123": false, "abcdef": false, "জসিম১২": false, "abc12": true, "": true} {
+		if got := errors.Is(ValidateManaged(pw), ErrShort); got != short {
+			t.Errorf("ValidateManaged(%q) short=%v, want %v", pw, got, short)
+		}
+	}
+}
+
 func TestHashAndVerify(t *testing.T) {
 	encoded, err := Hash("karim2026")
 	if err != nil {

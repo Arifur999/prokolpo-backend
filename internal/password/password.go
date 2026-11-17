@@ -23,6 +23,8 @@ const (
 	keyLen    = 32
 	minLength = 8
 	maxLength = 128
+	// The owner sets a managed login's password and hands it over by mouth, so it may be shorter.
+	minManagedLength = 6
 )
 
 // ErrWeak reports a password that breaks the rule: 8+ characters with both a letter and a digit.
@@ -48,6 +50,18 @@ func Validate(pw string) error {
 	}
 	if !hasLetter || !hasDigit {
 		return ErrWeak
+	}
+	return nil
+}
+
+// ErrShort reports a managed login's password under six characters.
+var ErrShort = errors.New("password must be at least 6 characters")
+
+// ValidateManaged checks the rule for a login the owner opens for a manager: six characters
+// or more, nothing else asked.
+func ValidateManaged(pw string) error {
+	if n := len([]rune(pw)); n < minManagedLength || n > maxLength {
+		return ErrShort
 	}
 	return nil
 }
