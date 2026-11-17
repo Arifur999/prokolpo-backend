@@ -10,6 +10,7 @@ const (
 	codeRestoreClosed = "RESTORE_WINDOW_CLOSED"
 	codeReadOnly      = "READ_ONLY_ROLE"
 	codeProjectDone   = "PROJECT_DONE"
+	codePhoneTaken    = "PHONE_TAKEN"
 )
 
 var messages = msg.Catalog{
@@ -18,25 +19,33 @@ var messages = msg.Catalog{
 	codeOwnerOnly:     {BN: "এটা শুধু প্রজেক্টের মালিক করতে পারেন", EN: "Only the project's owner can do this"},
 	codeReadOnly:      {BN: "আপনি এই প্রজেক্টে শুধু দেখতে পারেন — এন্ট্রি করতে মালিককে বলুন", EN: "You can only view this project — ask the owner for entry access"},
 	codeProjectDone:   {BN: "প্রজেক্টটা শেষ হিসেবে রাখা আছে — নতুন এন্ট্রি দিতে মালিক সেটিংস থেকে আবার চালু করবেন", EN: "This project is marked done — the owner can set it going again in settings to add entries"},
+	codePhoneTaken:    {BN: "এই নম্বরে আগে থেকেই অ্যাকাউন্ট আছে", EN: "This number already has an account"},
 	codeRestoreClosed: {BN: "30 দিন পার হয়ে গেছে — এই প্রজেক্ট আর ফেরানো যাবে না", EN: "More than 30 days have passed — this project can no longer be restored"},
 }
 
 var fieldMessages = map[string]msg.Text{
-	"nameMissing":  {BN: "প্রজেক্টের নাম দিন", EN: "Enter a project name"},
-	"nameShort":    {BN: "নাম কমপক্ষে ৩ অক্ষরের হতে হবে", EN: "The name needs at least 3 characters"},
-	"nameLong":     {BN: "নাম ৮০ অক্ষরের বেশি হতে পারবে না", EN: "The name can be at most 80 characters"},
-	"kind":         {BN: "কিসের প্রজেক্ট, বেছে নিন", EN: "Choose what the project is for"},
-	"ownership":    {BN: "মালিকানা বেছে নিন", EN: "Choose the ownership"},
-	"location":     {BN: "ঠিকানা 120 অক্ষরের মধ্যে লিখুন", EN: "Keep the location under 120 characters"},
-	"description":  {BN: "বিবরণ 500 অক্ষরের মধ্যে লিখুন", EN: "Keep the description under 500 characters"},
-	"startDate":    {BN: "সঠিক তারিখ দিন", EN: "Enter a valid date"},
-	"budget":       {BN: "সঠিক টাকার পরিমাণ দিন", EN: "Enter a valid amount"},
-	"farmType":     {BN: "খামারের ধরন বেছে নিন", EN: "Choose the type of farm"},
-	"count":        {BN: "সংখ্যাটা ঠিক নেই", EN: "This number is out of range"},
-	"landArea":     {BN: "জমির সঠিক পরিমাণ দিন", EN: "Enter a valid land area"},
-	"landUnit":     {BN: "জমির একক বেছে নিন", EN: "Choose a land unit"},
-	"businessType": {BN: "ব্যবসার ধরন 60 অক্ষরের মধ্যে লিখুন", EN: "Keep the business type under 60 characters"},
-	"list":         {BN: "তালিকায় ভুল আছে — খালি, একই নাম দুবার বা 60 অক্ষরের বেশি", EN: "This list has a blank, repeated or over-long (60+) entry"},
+	"nameMissing":        {BN: "প্রজেক্টের নাম দিন", EN: "Enter a project name"},
+	"nameShort":          {BN: "নাম কমপক্ষে ৩ অক্ষরের হতে হবে", EN: "The name needs at least 3 characters"},
+	"nameLong":           {BN: "নাম ৮০ অক্ষরের বেশি হতে পারবে না", EN: "The name can be at most 80 characters"},
+	"kind":               {BN: "কিসের প্রজেক্ট, বেছে নিন", EN: "Choose what the project is for"},
+	"ownership":          {BN: "মালিকানা বেছে নিন", EN: "Choose the ownership"},
+	"locationMissing":    {BN: "প্রজেক্টের ঠিকানা দিন", EN: "Enter project address"},
+	"location":           {BN: "ঠিকানা 120 অক্ষরের মধ্যে লিখুন", EN: "Keep the location under 120 characters"},
+	"description":        {BN: "বিবরণ 500 অক্ষরের মধ্যে লিখুন", EN: "Keep the description under 500 characters"},
+	"startDate":          {BN: "সঠিক তারিখ দিন", EN: "Enter a valid date"},
+	"budget":             {BN: "সঠিক টাকার পরিমাণ দিন", EN: "Enter a valid amount"},
+	"farmType":           {BN: "খামারের ধরন বেছে নিন", EN: "Choose the type of farm"},
+	"count":              {BN: "সংখ্যাটা ঠিক নেই", EN: "This number is out of range"},
+	"landArea":           {BN: "জমির সঠিক পরিমাণ দিন", EN: "Enter a valid land area"},
+	"landUnit":           {BN: "জমির একক বেছে নিন", EN: "Choose a land unit"},
+	"businessType":       {BN: "ব্যবসার ধরন 60 অক্ষরের মধ্যে লিখুন", EN: "Keep the business type under 60 characters"},
+	"managerNameMissing": {BN: "ম্যানেজারের নাম দিন", EN: "Enter manager’s name"},
+	"managerNameShort":   {BN: "নাম কমপক্ষে ২ অক্ষরের হতে হবে", EN: "Name must be at least 2 characters"},
+	"managerNameLong":    {BN: "নাম ৫০ অক্ষরের বেশি হতে পারবে না", EN: "The name can be at most 50 characters"},
+	"managerPhone":       {BN: "সঠিক মোবাইল নম্বর দিন (যেমন 01811223344)", EN: "Enter a valid mobile number (e.g. 01811223344)"},
+	"managerPassword":    {BN: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে", EN: "Password must be at least 6 characters"},
+	"managerPhoneTaken":  {BN: "এই নম্বরে আগে থেকেই অ্যাকাউন্ট আছে — মেম্বার পেজ থেকে আমন্ত্রণ দিন", EN: "This number already has an account — invite them from the Members page"},
+	"list":               {BN: "তালিকায় ভুল আছে — খালি, একই নাম দুবার বা 60 অক্ষরের বেশি", EN: "This list has a blank, repeated or over-long (60+) entry"},
 }
 
 // cashAccountName names the account every new project starts with.

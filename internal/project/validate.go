@@ -7,10 +7,14 @@ import (
 	"unicode/utf8"
 
 	"github.com/Arifur999/prokolpo-backend/internal/apperr"
+	"github.com/Arifur999/prokolpo-backend/internal/password"
+	"github.com/Arifur999/prokolpo-backend/internal/phone"
 )
 
 const (
 	minNameLen        = 3
+	minPersonLen      = 2
+	maxPersonLen      = 50
 	maxNameLen        = 80
 	maxLocationLen    = 120
 	maxDescriptionLen = 500
@@ -42,25 +46,45 @@ type NewProject struct {
 	BusinessType *string
 	Categories   []string
 	Phases       []string
+	// Manager, when set, gets a login of their own that only opens this project.
+	Manager *NewManager
+	// lang words the one error only the database can find: the manager's number is taken.
+	lang string
+}
+
+// NewManager is the login the owner opens for the project's manager.
+type NewManager struct {
+	Name        string
+	Phone       string
+	Password    string
+	CanAddStaff bool
+}
+
+type managerBody struct {
+	Name        string `json:"name"`
+	Phone       string `json:"phone"`
+	Password    string `json:"password"`
+	CanAddStaff bool   `json:"canAddStaff"`
 }
 
 type createBody struct {
-	Name         string   `json:"name"`
-	Kind         string   `json:"kind"`
-	Ownership    string   `json:"ownership"`
-	Location     string   `json:"location"`
-	Description  string   `json:"description"`
-	StartDate    string   `json:"startDate"`
-	Budget       *int64   `json:"budget"`
-	FarmType     string   `json:"farmType"`
-	Floors       *int16   `json:"floors"`
-	Batches      *int16   `json:"batches"`
-	Plots        *int16   `json:"plots"`
-	LandArea     *float64 `json:"landArea"`
-	LandUnit     string   `json:"landUnit"`
-	BusinessType string   `json:"businessType"`
-	Categories   []string `json:"categories"`
-	Phases       []string `json:"phases"`
+	Name         string       `json:"name"`
+	Kind         string       `json:"kind"`
+	Ownership    string       `json:"ownership"`
+	Location     string       `json:"location"`
+	Description  string       `json:"description"`
+	StartDate    string       `json:"startDate"`
+	Budget       *int64       `json:"budget"`
+	FarmType     string       `json:"farmType"`
+	Floors       *int16       `json:"floors"`
+	Batches      *int16       `json:"batches"`
+	Plots        *int16       `json:"plots"`
+	LandArea     *float64     `json:"landArea"`
+	LandUnit     string       `json:"landUnit"`
+	BusinessType string       `json:"businessType"`
+	Categories   []string     `json:"categories"`
+	Phases       []string     `json:"phases"`
+	Manager      *managerBody `json:"manager"`
 }
 
 // validator collects field errors in the request's language.
@@ -115,7 +139,7 @@ func (v *validator) list(path string, items []string, limit int) []string {
 
 func (b createBody) validate(lang string) (NewProject, error) {
 	v := &validator{lang: lang}
-	np := NewProject{Name: strings.TrimSpace(b.Name), Kind: b.Kind, Ownership: b.Ownership}
+	np := NewProject{Name: strings.TrimSpace(b.Name), Kind: b.Kind, Ownership: b.Ownership, lang: lang}
 
 	switch n := utf8.RuneCountInString(np.Name); {
 	case n == 0:
@@ -131,13 +155,18 @@ func (b createBody) validate(lang string) (NewProject, error) {
 	if !slices.Contains(ownerships, np.Ownership) {
 		v.add("ownership", "ownership")
 	}
-	np.Location = v.text("location", b.Location, maxLocationLen)
-	np.Description = v.text("description", b.Description, maxDescriptionLen)
-	start, err := time.Parse(time.DateOnly, b.StartDate)
-	if err != nil {
-		v.add("startDate", "startDate")
+	if np.Location = v.text("location", b.Location, maxLocationLen); np.Location == nil {
+		v.add("location", "locationMissing")
 	}
-	np.StartDate = start
+	np.Description = v.text("description", b.Description, maxDescriptionLen)
+	// The new-project form no longer asks for a start date; Create opens it today.
+	if b.StartDate != "" {
+		start, err := time.Parse(time.DateOnly, b.StartDate)
+		if err != nil {
+			v.add("startDate", "startDate")
+		}
+		np.StartDate = start
+	}
 	if b.Budget != nil && (*b.Budget < 0 || *b.Budget > maxBudget) {
 		v.add("budget", "budget")
 	}
@@ -146,6 +175,9 @@ func (b createBody) validate(lang string) (NewProject, error) {
 	np.applyKindDetails(v, b)
 	np.Categories = v.list("categories", b.Categories, maxCategories)
 	np.Phases = v.list("phases", b.Phases, maxPhases)
+	if b.Manager != nil {
+		np.Manager = v.manager(*b.Manager)
+	}
 
 	if len(v.fields) > 0 {
 		return NewProject{}, messages.Fail(apperr.KindInvalid, codeInvalidInput, v.fields...)
@@ -180,4 +212,27 @@ func (np *NewProject) applyKindDetails(v *validator, b createBody) {
 	if np.Kind == KindBusiness {
 		np.BusinessType = v.text("businessType", b.BusinessType, maxBusinessLen)
 	}
+}
+
+// manager checks the login the owner is opening: a name, a Bangladesh mobile number (the
+// login ID) and a password of six characters or more.
+func (v *validator) manager(b managerBody) *NewManager {
+	m := NewManager{Name: strings.TrimSpace(b.Name), Password: b.Password, CanAddStaff: b.CanAddStaff}
+	switch n := utf8.RuneCountInString(m.Name); {
+	case n == 0:
+		v.add("manager.name", "managerNameMissing")
+	case n < minPersonLen:
+		v.add("manager.name", "managerNameShort")
+	case n > maxPersonLen:
+		v.add("manager.name", "managerNameLong")
+	}
+	p, err := phone.Normalize(b.Phone)
+	if err != nil {
+		v.add("manager.phone", "managerPhone")
+	}
+	m.Phone = p
+	if password.ValidateManaged(b.Password) != nil {
+		v.add("manager.password", "managerPassword")
+	}
+	return &m
 }

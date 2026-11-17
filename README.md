@@ -97,7 +97,7 @@ carry a stable `code` (`ACCOUNT_SUSPENDED`, `RESET_LINK_INVALID`, ...). Messages
 | `POST /auth/refresh` | `refreshToken` | rotates; a reused token revokes its family |
 | `POST /auth/logout` | `refreshToken` | |
 | `GET /auth/me` | | `Authorization: Bearer <accessToken>` |
-| `POST /auth/password/options` | `phone` | name, masked email, which ways can reset |
+| `POST /auth/password/options` | `phone` | name, masked email, which ways can reset. A login the owner opened for a manager answers 403 `PASSWORD_MANAGED` here, on `/auth/password/email`, `/code` and on a password change |
 | `POST /auth/password/email` | `phone` | emails a 30-minute single-use link, once a minute |
 | `POST /auth/password/check` | `token` | is the link still usable |
 | `POST /auth/password/reset` | `token, password` | signs out every session |
@@ -117,7 +117,7 @@ All routes need `Authorization: Bearer <accessToken>`. A project someone is not 
 | Endpoint | Body | Notes |
 | --- | --- | --- |
 | `GET /projects` | | the caller's projects with their `role` and `memberCount` |
-| `POST /projects` | `name, kind, ownership, startDate, location?, description?, budget?` + kind details, `categories[]`, `phases[]` | 201; adds the owner, expense heads, phases and a cash account |
+| `POST /projects` | `name, kind, ownership, location, startDate?, description?, budget?` + kind details, `categories[]`, `phases[]`, `manager?{name, phone, password, canAddStaff}` | 201; adds the owner, expense heads, phases and a cash account. A `manager` gets a login the owner looks after (`password_locked`); a number that already has an account is 409 `PHONE_TAKEN` on `manager.phone`. `startDate` defaults to today |
 | `GET /projects/{id}` | | the project with its phases |
 | `DELETE /projects/{id}` | | owner only; restorable for 30 days |
 | `GET /projects/deleted` | | the owner's restorable projects with `purgeAt` |
@@ -160,7 +160,8 @@ Under `/projects/{id}`; members read, only the owner changes the team (others ge
 | `GET /members/lookup?phone=` | `MEMBER`, `PENDING`, `FOUND` (with the name) or `NEW` |
 | `POST /members` | `phone, role` (MANAGER or VIEWER): an account joins now, any other number waits as an invitation |
 | `PATCH /members/{uid}`, `DELETE /members/{uid}` | change role, remove; the owner is fixed (`OWNER_FIXED`); entries stay |
-| `POST /members/{uid}/reset-code` | a 6-digit code, 30 minutes, once; a new code voids the old one |
+| `POST /members/{uid}/reset-code` | a 6-digit code, 30 minutes, once; a new code voids the old one. 409 `PASSWORD_MANAGED` for a login the owner opened |
+| `PUT /members/{uid}/password` | `{password}` (6+): owner only, for a login the owner opened; signs it out everywhere. 409 `NOT_MANAGED` otherwise |
 | `DELETE /invites/{iid}` | cancels an invitation |
 | `GET /activity?actor=&action=&days=&before=` | 50 entries a page, newest first, with the bill, payment or transfer joined in |
 | `GET /activity/week` | each member's entries since Sunday |

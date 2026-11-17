@@ -61,6 +61,10 @@ func TestValidateReportsEveryBadField(t *testing.T) {
 		{"repeated category", func(b *createBody) { b.Categories = []string{"রড", " রড"} }, []string{"categories"}},
 		{"blank phase", func(b *createBody) { b.Phases = []string{"ছাদ", ""} }, []string{"phases"}},
 		{"farm without a type", func(b *createBody) { b.Kind = KindFarm }, []string{"farmType"}},
+		{"blank location", func(b *createBody) { b.Location = "  " }, []string{"location"}},
+		{"bad manager", func(b *createBody) {
+			b.Manager = &managerBody{Name: "জ", Phone: "0181122", Password: "abc12"}
+		}, []string{"manager.name", "manager.phone", "manager.password"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -81,5 +85,24 @@ func TestValidateNameMessagesFollowTheBoard(t *testing.T) {
 	e, _ := apperr.As(err)
 	if got := e.Fields[0].Message; got != "প্রজেক্টের নাম দিন" {
 		t.Errorf("blank name message = %q", got)
+	}
+}
+
+func TestValidateTakesAManagerAndLeavesTheStartDateToCreate(t *testing.T) {
+	body := validBuilding()
+	body.StartDate = ""
+	body.Budget = nil
+	body.Manager = &managerBody{Name: " জসিম উদ্দিন ", Phone: "০১৮১১-২২৩৩৪৪", Password: "abc123", CanAddStaff: true}
+
+	np, err := body.validate(httpx.LangBangla)
+	if err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	if !np.StartDate.IsZero() || np.Budget != nil {
+		t.Errorf("start %v budget %v", np.StartDate, np.Budget)
+	}
+	want := &NewManager{Name: "জসিম উদ্দিন", Phone: "01811223344", Password: "abc123", CanAddStaff: true}
+	if diff := cmp.Diff(want, np.Manager); diff != "" {
+		t.Errorf("manager (-want +got):\n%s", diff)
 	}
 }

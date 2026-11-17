@@ -23,19 +23,34 @@ func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool, now: time.Now}
 }
 
+var dhaka = time.FixedZone("Asia/Dhaka", 6*60*60)
+
 func notFound() error { return messages.Fail(apperr.KindNotFound, codeNotFound) }
 
 // Create opens a project owned by userID with its starting books, and returns it.
 // cashName is the starting account's name in the creator's language.
 func (s *Service) Create(ctx context.Context, userID, cashName string, np NewProject) (Project, error) {
+	if np.StartDate.IsZero() {
+		y, m, d := s.now().In(dhaka).Date()
+		np.StartDate = time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	}
 	var id string
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
 		if id, err = insertProject(ctx, tx, userID, np); err != nil {
 			return err
 		}
-		return seedBooks(ctx, tx, id, userID, cashName, np)
+		if err := seedBooks(ctx, tx, id, userID, cashName, np); err != nil {
+			return err
+		}
+		if np.Manager != nil {
+			return addManager(ctx, tx, id, userID, *np.Manager, np.lang)
+		}
+		return nil
 	})
+	if _, ok := apperr.As(err); ok {
+		return Project{}, err
+	}
 	if err != nil {
 		return Project{}, fmt.Errorf("create project: %w", err)
 	}
