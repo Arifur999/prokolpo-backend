@@ -179,6 +179,10 @@ func (s *Service) userForReset(ctx context.Context, rawPhone, lang string) (User
 	if err != nil {
 		return User{}, fmt.Errorf("find user: %w", err)
 	}
+	// A login the owner opened is reset by the owner, never by email or a code.
+	if user.PasswordLocked {
+		return User{}, messages.Fail(apperr.KindForbidden, codePasswordManaged)
+	}
 	return user, nil
 }
 

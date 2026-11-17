@@ -39,6 +39,9 @@ func (s *Service) ChangePassword(ctx context.Context, claims token.Claims, curre
 	if err != nil {
 		return Session{}, fmt.Errorf("load user: %w", err)
 	}
+	if user.PasswordLocked {
+		return Session{}, messages.Fail(apperr.KindForbidden, codePasswordManaged)
+	}
 	if current == "" {
 		return Session{}, fieldFail(lang, "currentPassword", "required")
 	}

@@ -22,6 +22,8 @@ type User struct {
 	Status       string
 	StaffRole    *string
 	CreatedAt    time.Time
+	// PasswordLocked marks a login the project owner opened: only the owner sets its password.
+	PasswordLocked bool
 }
 
 const (
@@ -54,13 +56,15 @@ type UserView struct {
 	Role        string    `json:"role"`
 	StaffRole   *string   `json:"staffRole"`
 	CreatedAt   time.Time `json:"createdAt"`
+	// PasswordManaged tells the profile page to hide the password form: the owner sets it.
+	PasswordManaged bool `json:"passwordManaged"`
 }
 
 func (u User) view() UserView {
 	return UserView{
 		ID: u.ID, FirstName: u.FirstName, LastName: u.LastName, Name: strings.TrimSpace(u.FirstName + " " + u.LastName),
 		CompanyName: u.CompanyName, Phone: u.Phone, Email: u.Email, Locale: u.Locale,
-		Role: u.Role(), StaffRole: u.StaffRole, CreatedAt: u.CreatedAt,
+		Role: u.Role(), StaffRole: u.StaffRole, CreatedAt: u.CreatedAt, PasswordManaged: u.PasswordLocked,
 	}
 }
 

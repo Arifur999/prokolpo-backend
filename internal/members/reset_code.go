@@ -60,17 +60,20 @@ func (s *Service) IssueResetCode(ctx context.Context, userID, projectID, memberI
 // anyone on another project, and anyone whose account existed before they joined this one.
 // Otherwise adding a stranger's number and issuing a code would hand over their account.
 func ownersToReset(ctx context.Context, tx pgx.Tx, projectID, memberID string) error {
-	var own bool
+	var own, managed bool
 	err := tx.QueryRow(ctx, `
-		SELECT u.staff_role IS NOT NULL
+		SELECT u.password_locked, u.staff_role IS NOT NULL
 			OR u.created_at < m.created_at - interval '1 minute'
 			OR EXISTS (
 				SELECT 1 FROM project_members o JOIN projects p ON p.id = o.project_id
 				WHERE o.user_id = u.id AND o.project_id <> m.project_id AND p.deleted_at IS NULL)
 		FROM users u JOIN project_members m ON m.user_id = u.id AND m.project_id = $1
-		WHERE u.id = $2`, projectID, memberID).Scan(&own)
+		WHERE u.id = $2`, projectID, memberID).Scan(&managed, &own)
 	if err != nil {
 		return fmt.Errorf("check reset code target: %w", err)
+	}
+	if managed {
+		return messages.Fail(apperr.KindConflict, codePasswordSet)
 	}
 	if own {
 		return messages.Fail(apperr.KindForbidden, codeOwnAccount)

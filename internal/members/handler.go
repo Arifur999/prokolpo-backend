@@ -30,6 +30,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("PATCH", "/members/{uid}", h.changeRole)
 	route("DELETE", "/members/{uid}", h.remove)
 	route("POST", "/members/{uid}/reset-code", h.resetCode)
+	route("PUT", "/members/{uid}/password", h.setPassword)
 	route("DELETE", "/invites/{iid}", h.cancelInvite)
 }
 
@@ -103,6 +104,16 @@ func (h *Handler) resetCode(w http.ResponseWriter, r *http.Request) {
 	c := h.call(r)
 	rc, err := h.svc.IssueResetCode(r.Context(), c.user, c.project, r.PathValue("uid"))
 	h.reply(w, r, http.StatusCreated, rc, err)
+}
+
+func (h *Handler) setPassword(w http.ResponseWriter, r *http.Request) {
+	c := h.call(r)
+	var body passwordBody
+	if err := httpx.DecodeJSON(w, r, &body); err != nil {
+		h.reply(w, r, 0, nil, err)
+		return
+	}
+	h.reply(w, r, http.StatusOK, nil, h.svc.SetPassword(r.Context(), c.user, c.project, r.PathValue("uid"), body.Password, c.lang))
 }
 
 func (h *Handler) cancelInvite(w http.ResponseWriter, r *http.Request) {

@@ -25,6 +25,7 @@ const (
 	codeResetCodeWrong     = "RESET_CODE_WRONG"
 	codeNoInvite           = "NO_INVITE"
 	codeOwnsProjects       = "OWNS_PROJECTS"
+	codePasswordManaged    = "PASSWORD_MANAGED"
 	codeStaffKeep          = "STAFF_ACCOUNT"
 	codeDeviceGone         = "DEVICE_NOT_FOUND"
 )
@@ -49,6 +50,7 @@ var messages = msg.Catalog{
 	codeResetCodeExpired:   {BN: "কোডের মেয়াদ শেষ — মালিকের কাছ থেকে নতুন কোড নিন", EN: "This code has expired — ask the owner for a new one"},
 	codeResetCodeLocked:    {BN: "অনেকবার ভুল হয়েছে — মালিকের কাছ থেকে নতুন কোড নিন", EN: "Too many wrong tries — ask the owner for a new code"},
 	codeResetCodeWrong:     {BN: "কোড মেলেনি", EN: "The code didn't match"},
+	codePasswordManaged:    {BN: "পাসওয়ার্ড বদলাতে মালিকের সাহায্য নিন", EN: "Ask the project owner to change your password"},
 	codeOwnsProjects:       {BN: "আপনি এখনো প্রজেক্টের মালিক — আগে সেগুলো অন্যকে দিন বা মুছুন", EN: "You still own projects — hand them over or delete them first"},
 	codeStaffKeep:          {BN: "স্টাফের অ্যাকাউন্ট এখান থেকে মোছা যায় না", EN: "Staff accounts can't be deleted here"},
 	codeDeviceGone:         {BN: "এই ডিভাইস আগেই লগআউট হয়েছে", EN: "This device is already logged out"},

@@ -19,11 +19,11 @@ type db interface {
 
 var errNotFound = errors.New("not found")
 
-const userColumns = `id, first_name, last_name, company_name, phone, email, password_hash, locale, status, staff_role, created_at`
+const userColumns = `id, first_name, last_name, company_name, phone, email, password_hash, locale, status, staff_role, created_at, password_locked`
 
 func scanUser(row pgx.Row) (User, error) {
 	var u User
-	err := row.Scan(&u.ID, &u.FirstName, &u.LastName, &u.CompanyName, &u.Phone, &u.Email, &u.PasswordHash, &u.Locale, &u.Status, &u.StaffRole, &u.CreatedAt)
+	err := row.Scan(&u.ID, &u.FirstName, &u.LastName, &u.CompanyName, &u.Phone, &u.Email, &u.PasswordHash, &u.Locale, &u.Status, &u.StaffRole, &u.CreatedAt, &u.PasswordLocked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, errNotFound
 	}
